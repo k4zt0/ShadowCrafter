@@ -74,7 +74,7 @@ Hugging Face 비공개 저장소는 `KaztoRay/ShadowCrafter-9B`만 사용합니�
 
 많은 자료를 수집하는 것보다 사용 권리, 출처, 품질, 최신성, 개인정보 최소화, 중복 제거와 평가 오염 방지가 우선입니다. Hugging Face 및 보안 자료는 허용 목록과 데이터 카드 검토를 통과한 스냅샷만 학습에 사용합니다. 비밀, 탈취 자격 증명, 불법 취득 자료, 배포가 제한된 데이터는 제외합니다. 세부 정책은 [docs/DATA_GOVERNANCE.md](docs/DATA_GOVERNANCE.md)를 참고하십시오.
 
-현재 확장 train-only snapshot은 7개 승인 소스에서 28,110건을 포함하며, 고정된
+현재 확장 train-only snapshot은 8개 승인 소스에서 28,140건을 포함하며, 고정된
 CTI-Bench 5,533건과의 exact/embedded 오염 검사를 통과했습니다. 소스별 수량,
 해시, 제외 근거와 아직 학습하지 않은 후보는
 [docs/DATASET_EXPANSION.md](docs/DATASET_EXPANSION.md)에 기록합니다.

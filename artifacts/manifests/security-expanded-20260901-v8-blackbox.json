@@ -1,0 +1,237 @@
+{
+  "artifacts": {
+    "evaluation": {
+      "path": "data/processed/security-expanded-20260901-v8-blackbox-train-only/evaluation.jsonl",
+      "record_count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "size": 0
+    },
+    "test": {
+      "path": "data/processed/security-expanded-20260901-v8-blackbox-train-only/test.jsonl",
+      "record_count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "size": 0
+    },
+    "train": {
+      "path": "data/processed/security-expanded-20260901-v8-blackbox-train-only/train.jsonl",
+      "record_count": 28140,
+      "sha256": "8b0be9434be7452bf8129650eec485a00d2ce3efabeb725dc2f81908e18b7c7f",
+      "size": 53836931
+    },
+    "validation": {
+      "path": "data/processed/security-expanded-20260901-v8-blackbox-train-only/validation.jsonl",
+      "record_count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "size": 0
+    }
+  },
+  "created_at_utc": "2026-09-01T12:15:27.899332+00:00",
+  "dataset_sha256": "5a8cfe0004244e75d39c680dbbba715290d12743d07e1d482b03250fe3783cb9",
+  "deduplication": {
+    "applied_before_split": true,
+    "exact_duplicate_count": 0,
+    "exact_method": "SecurityRecord.canonical_hash(task,messages,labels)",
+    "normalized_duplicate_count": 0,
+    "normalized_method": "NFKC + normalized line endings + trailing-space trim"
+  },
+  "exact_duplicate_count": 0,
+  "input": null,
+  "input_record_count": 28140,
+  "input_set_sha256": "68c481ee338043e56ec3625f97ce14669a1515e5242fbf3b9da0f2014f21aff4",
+  "inputs": [
+    {
+      "path": "/Users/kaztoray/Desktop/ShadowCrafter/data/processed/security-expanded-20260901-v7-train-only/train.jsonl",
+      "record_count": 28110,
+      "sha256": "63d2e2f3bbe7efa0a6a1487977a1dc1f30055e2dc71ce1e3df986d6ad04a1179",
+      "size": 53793572
+    },
+    {
+      "path": "/Users/kaztoray/Desktop/ShadowCrafter/data/staging/blackbox-passive-controls-v1.jsonl",
+      "record_count": 30,
+      "sha256": "1b92668c7a2f9a3cb0eae79391b210188d56f00ac01ddbbc944b1f615846ce55",
+      "size": 43359
+    }
+  ],
+  "isolation": {
+    "evaluation:test": {
+      "assistant_content_overlap": 0,
+      "exact_hash_overlap": 0,
+      "normalized_hash_overlap": 0,
+      "split_group_overlap": 0,
+      "user_content_overlap": 0
+    },
+    "evaluation:train": {
+      "assistant_content_overlap": 0,
+      "exact_hash_overlap": 0,
+      "normalized_hash_overlap": 0,
+      "split_group_overlap": 0,
+      "user_content_overlap": 0
+    },
+    "evaluation:validation": {
+      "assistant_content_overlap": 0,
+      "exact_hash_overlap": 0,
+      "normalized_hash_overlap": 0,
+      "split_group_overlap": 0,
+      "user_content_overlap": 0
+    },
+    "test:train": {
+      "assistant_content_overlap": 0,
+      "exact_hash_overlap": 0,
+      "normalized_hash_overlap": 0,
+      "split_group_overlap": 0,
+      "user_content_overlap": 0
+    },
+    "test:validation": {
+      "assistant_content_overlap": 0,
+      "exact_hash_overlap": 0,
+      "normalized_hash_overlap": 0,
+      "split_group_overlap": 0,
+      "user_content_overlap": 0
+    },
+    "train:validation": {
+      "assistant_content_overlap": 0,
+      "exact_hash_overlap": 0,
+      "normalized_hash_overlap": 0,
+      "split_group_overlap": 0,
+      "user_content_overlap": 0
+    }
+  },
+  "normalized_duplicate_count": 0,
+  "record_count": 28140,
+  "registry": {
+    "path": "configs/data/sources.yaml",
+    "sha256": "bdc69660611ee64db3aa5d3279e9859c81a64c08ba55bd46d0c51fe25fd09405"
+  },
+  "schema_version": 2,
+  "secret_redactions": 0,
+  "sources": [
+    {
+      "allowed_purposes": [
+        "rag",
+        "train"
+      ],
+      "license_id": "MITRE-ATTACK-Terms-of-Use",
+      "license_url": "https://github.com/mitre-attack/attack-stix-data/blob/master/LICENSE.txt",
+      "policy_class": "allow_train",
+      "record_count": 19079,
+      "retrieved_at_max": "2026-09-01T02:18:13.636072+00:00",
+      "retrieved_at_min": "2026-09-01T02:18:13.636072+00:00",
+      "source_id": "mitre-attack-enterprise",
+      "upstream_revision": "W/\"49e6c58705450b6d896c7091fe855fe2abae3dc529cb10b4b3022a9cdb9df354\""
+    },
+    {
+      "allowed_purposes": [
+        "rag",
+        "train"
+      ],
+      "license_id": "MITRE-ATTACK-Terms-of-Use",
+      "license_url": "https://github.com/mitre-attack/attack-stix-data/blob/master/LICENSE.txt",
+      "policy_class": "allow_train",
+      "record_count": 768,
+      "retrieved_at_max": "2026-09-01T02:18:13.636072+00:00",
+      "retrieved_at_min": "2026-09-01T02:18:13.636072+00:00",
+      "source_id": "mitre-attack-ics",
+      "upstream_revision": "W/\"7883bd19ea74cbc03580d5bea816cbb3175972c4294ec2e45f1cb2b8ce8a8008\""
+    },
+    {
+      "allowed_purposes": [
+        "rag",
+        "train"
+      ],
+      "license_id": "MITRE-ATTACK-Terms-of-Use",
+      "license_url": "https://github.com/mitre-attack/attack-stix-data/blob/master/LICENSE.txt",
+      "policy_class": "allow_train",
+      "record_count": 1854,
+      "retrieved_at_max": "2026-09-01T02:18:13.636072+00:00",
+      "retrieved_at_min": "2026-09-01T02:18:13.636072+00:00",
+      "source_id": "mitre-attack-mobile",
+      "upstream_revision": "W/\"84aece4c8acc4c836bca8a48ba5da530c8bdddbbc7459aa2f04600dd4a4fa9bf\""
+    },
+    {
+      "allowed_purposes": [
+        "rag",
+        "train"
+      ],
+      "license_id": "MITRE-CAPEC-Terms-of-Use",
+      "license_url": "https://capec.mitre.org/about/termsofuse.html",
+      "policy_class": "allow_train",
+      "record_count": 1617,
+      "retrieved_at_max": "2026-09-01T11:38:00.201201+00:00",
+      "retrieved_at_min": "2026-09-01T11:38:00.201201+00:00",
+      "source_id": "mitre-capec",
+      "upstream_revision": "Tue, 24 Jan 2023 18:32:31 GMT"
+    },
+    {
+      "allowed_purposes": [
+        "rag",
+        "train"
+      ],
+      "license_id": "MITRE-CWE-Terms-of-Use",
+      "license_url": "https://cwe.mitre.org/about/termsofuse.html",
+      "policy_class": "allow_train",
+      "record_count": 1699,
+      "retrieved_at_max": "2026-09-01T11:38:00.201201+00:00",
+      "retrieved_at_min": "2026-09-01T11:38:00.201201+00:00",
+      "source_id": "mitre-cwe",
+      "upstream_revision": "Thu, 30 Apr 2026 09:15:04 GMT"
+    },
+    {
+      "allowed_purposes": [
+        "rag",
+        "train"
+      ],
+      "license_id": "Apache-2.0",
+      "license_url": "https://github.com/ocsf/ocsf-schema/blob/main/LICENSE",
+      "policy_class": "allow_train",
+      "record_count": 1106,
+      "retrieved_at_max": "2026-09-01T11:50:35.586935+00:00",
+      "retrieved_at_min": "2026-09-01T11:50:35.586935+00:00",
+      "source_id": "ocsf-schema",
+      "upstream_revision": "40a1511e014da94d2d7a2ff964089425d0d479dd"
+    },
+    {
+      "allowed_purposes": [
+        "rag",
+        "train"
+      ],
+      "license_id": "Apache-2.0",
+      "license_url": "https://www.apache.org/licenses/LICENSE-2.0",
+      "policy_class": "allow_train",
+      "record_count": 30,
+      "retrieved_at_max": "2026-09-01T12:14:53+00:00",
+      "retrieved_at_min": "2026-09-01T12:14:53+00:00",
+      "source_id": "odytssey-curated-security-instructions",
+      "upstream_revision": "1d8bba0451279782fc7b1beced45918cdc0a7182"
+    },
+    {
+      "allowed_purposes": [
+        "rag",
+        "train"
+      ],
+      "license_id": "Apache-2.0",
+      "license_url": "https://github.com/splunk/security_content/blob/develop/LICENSE",
+      "policy_class": "allow_train",
+      "record_count": 1987,
+      "retrieved_at_max": "2026-09-01T11:47:31.737973+00:00",
+      "retrieved_at_min": "2026-09-01T11:47:31.737973+00:00",
+      "source_id": "splunk-security-content",
+      "upstream_revision": "ad15a0a3cb3ff29dca19160dd5bce30ebad89f78"
+    }
+  ],
+  "split_counts": {
+    "evaluation": 0,
+    "test": 0,
+    "train": 28140,
+    "validation": 0
+  },
+  "split_policy": {
+    "benchmark_holdout": "rejected",
+    "eligible_for_release_evaluation": false,
+    "evaluation_requirement": "Use a separately governed eval-only benchmark or a future temporal holdout; these train-only artifacts provide no internal validation or test evidence.",
+    "mode": "train_only",
+    "separate_evaluation_required": true,
+    "strategy": "train_only_no_internal_evaluation",
+    "test_after": null,
+    "validation_after": null
+  }
+}

@@ -2,13 +2,13 @@
 
 ## 고정 학습 snapshot
 
-- dataset ID: `security-expanded-20260901-v7-train-only`
-- 생성 시각: `2026-09-01T11:51:35.154458+00:00`
-- 학습 레코드: 28,110
+- dataset ID: `security-expanded-20260901-v8-blackbox-train-only`
+- 생성 시각: `2026-09-01T12:15:27.899332+00:00`
+- 학습 레코드: 28,140
 - validation/test/evaluation 레코드: 0/0/0
-- train SHA-256: `63d2e2f3bbe7efa0a6a1487977a1dc1f30055e2dc71ce1e3df986d6ad04a1179`
-- prepared manifest SHA-256: `9b1fc8f14abce9505cddb75d84c58530cf39218c971c7c05ecd9914d71423b89`
-- dataset fingerprint: `a1a46d40b692b6478491f8d14b045bb79ed7c8cf652aae202a14e7f4821ea8b1`
+- train SHA-256: `8b0be9434be7452bf8129650eec485a00d2ce3efabeb725dc2f81908e18b7c7f`
+- prepared manifest SHA-256: `c40f7d9d24566b5e059d4f8450e9d6b07255ce79de86a6513fce1cb4db020c16`
+- dataset fingerprint: `5a8cfe0004244e75d39c680dbbba715290d12743d07e1d482b03250fe3783cb9`
 - source registry canonical SHA-256:
   `bdc69660611ee64db3aa5d3279e9859c81a64c08ba55bd46d0c51fe25fd09405`
 - source registry raw-file SHA-256:
@@ -28,6 +28,7 @@
 | MITRE CAPEC | 1,617 | `Tue, 24 Jan 2023 18:32:31 GMT` | mitigation, CAPEC→CWE mapping |
 | Splunk Security Content | 1,987 | `ad15a0a3cb3ff29dca19160dd5bce30ebad89f78` | production SPL detections |
 | OCSF schema | 1,106 | `40a1511e014da94d2d7a2ff964089425d0d479dd` | SIEM event normalization schema |
+| Odytssey curated black-box controls | 30 | `1d8bba0451279782fc7b1beced45918cdc0a7182` | authorized passive vulnerability assessment |
 
 Splunk에서는 `production` detection만 읽고 experimental/deprecated rule, test payload,
 attack simulation과 별도 attack-data를 제외했다. OCSF에서는 dictionary, category,
@@ -42,6 +43,7 @@ event/object/profile/extension schema만 읽고 예제 로그와 실행 코드�
 | SIEM query/schema | 3,093 |
 | secure code review | 2,868 |
 | CWE mapping | 448 |
+| black-box assessment | 30 |
 
 exact duplicate, normalized duplicate와 secret redaction은 각각 0건이다. 데이터 양을
 인위적으로 맞추기 위한 oversampling은 적용하지 않았다.
@@ -55,7 +57,7 @@ decontamination manifest에 저장하지 않았다.
 
 - 제외 전 CAPEC: 1,620
 - 제외 후 CAPEC: 1,617
-- 최종 검사: train 28,110 / evaluation 5,533 / overlap 0
+- 최종 검사: train 28,140 / evaluation 5,533 / overlap 0
 - CTI-Bench eval JSONL SHA-256:
   `e78c90f1d4d9f75cd9a8011cad80b9614654f1d4a86c536144da0bc79e85a14f`
 
