@@ -1,0 +1,81 @@
+[build-system]
+requires = ["hatchling>=1.27"]
+build-backend = "hatchling.build"
+
+[project]
+name = "shadowcrafter"
+version = "0.1.0"
+description = "Odytssey's defensive-first cybersecurity LLM training and evaluation stack"
+readme = "README.md"
+requires-python = ">=3.11,<3.13"
+license = { text = "Apache-2.0" }
+authors = [{ name = "Odytssey" }]
+dependencies = [
+  "pydantic>=2.10,<3",
+  "PyYAML>=6.0.2,<7",
+  "typer>=0.15,<1",
+  "rich>=13.9,<15",
+]
+
+[project.optional-dependencies]
+release = [
+  "huggingface-hub>=0.35,<2",
+  "httpx>=0.28,<1",
+]
+data = [
+  "datasets>=3.5",
+  "huggingface-hub>=0.30",
+  "httpx>=0.28,<1",
+  "tenacity>=9,<10",
+  "tqdm>=4.67,<5",
+]
+train = [
+  "accelerate>=1.11,<2",
+  "bitsandbytes>=0.48,<1",
+  "datasets>=4.0,<5",
+  "huggingface-hub>=0.35,<2",
+  "peft>=0.19,<0.20",
+  "safetensors>=0.5",
+  "scikit-learn>=1.6",
+  "torch>=2.10,<2.11",
+  "transformers>=5.8.1,<6",
+  "trl>=0.29,<0.30",
+]
+serve = [
+  "fastapi>=0.115,<1",
+  "uvicorn[standard]>=0.34,<1",
+]
+dev = [
+  "mypy>=1.15,<2",
+  "pytest>=8.3,<9",
+  "pytest-cov>=6,<7",
+  "ruff>=0.11,<1",
+  "types-PyYAML>=6.0.12",
+]
+
+[project.scripts]
+shadowcrafter = "shadowcrafter.cli:app"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/shadowcrafter"]
+
+[tool.pytest.ini_options]
+addopts = "-q --strict-markers"
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "S"]
+ignore = ["S101"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+packages = ["shadowcrafter"]
+
+[[tool.mypy.overrides]]
+module = ["datasets", "datasets.*", "peft", "peft.*", "torch", "torch.*", "transformers", "transformers.*", "trl", "trl.*"]
+ignore_missing_imports = true

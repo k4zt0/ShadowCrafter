@@ -1,0 +1,116 @@
+{
+  "artifact_id": "Odytssey/ShadowCrafter-9B-preflight",
+  "created_at": "2026-09-01T02:28:10.743143+00:00",
+  "file_count": 21,
+  "files": [
+    {
+      "path": "README.md",
+      "sha256": "38be162e1fb5b0068cc0beaca7050efe7cb52c06d846643128b14060f39ccb50",
+      "size": 1341
+    },
+    {
+      "path": "adapter/README.md",
+      "sha256": "0a8363f602f9a6b7afcccf59347a46b547dca9332ce7c480c50b3fa373163f68",
+      "size": 5276
+    },
+    {
+      "path": "adapter/adapter_config.json",
+      "sha256": "225694a7f46b387b9363bab28a2eb6eb7742ba9cc11ca0dc78f1394f4cf9fc28",
+      "size": 1226
+    },
+    {
+      "path": "adapter/adapter_model.safetensors",
+      "sha256": "73ea80c1ae519001bcc58d390a102872c1c040758e0dfa50c9427fadc52db1aa",
+      "size": 173181568
+    },
+    {
+      "path": "adapter/chat_template.jinja",
+      "sha256": "9dd2fbd270feaa1fbef2d4f634d7887c9c506e3bde140f8e7351c8944e8fd235",
+      "size": 7593
+    },
+    {
+      "path": "adapter/tokenizer.json",
+      "sha256": "06b9509352d2af50381ab2247e083b80d32d5c0aba91c272ca9ff729b6a0e523",
+      "size": 19989325
+    },
+    {
+      "path": "adapter/tokenizer_config.json",
+      "sha256": "bee8eba30f0eb4af73c0fe2cd06d0f89b657d7819941c438157ec42f7c80ea87",
+      "size": 1123
+    },
+    {
+      "path": "adapter/training_args.bin",
+      "sha256": "55cd16dd012ff0c53c2dc838d2432024d2bdee55c9673efebd4f1708d70c95b2",
+      "size": 5649
+    },
+    {
+      "path": "adapter-verification.json",
+      "sha256": "cb013ac7e80aac50a6b3b963d19b18ac0619c4f12bee6e5e6938ac9fac12f477",
+      "size": 619
+    },
+    {
+      "path": "checkpoint-1/README.md",
+      "sha256": "0a8363f602f9a6b7afcccf59347a46b547dca9332ce7c480c50b3fa373163f68",
+      "size": 5276
+    },
+    {
+      "path": "checkpoint-1/adapter_config.json",
+      "sha256": "225694a7f46b387b9363bab28a2eb6eb7742ba9cc11ca0dc78f1394f4cf9fc28",
+      "size": 1226
+    },
+    {
+      "path": "checkpoint-1/adapter_model.safetensors",
+      "sha256": "73ea80c1ae519001bcc58d390a102872c1c040758e0dfa50c9427fadc52db1aa",
+      "size": 173181568
+    },
+    {
+      "path": "checkpoint-1/chat_template.jinja",
+      "sha256": "9dd2fbd270feaa1fbef2d4f634d7887c9c506e3bde140f8e7351c8944e8fd235",
+      "size": 7593
+    },
+    {
+      "path": "checkpoint-1/optimizer.pt",
+      "sha256": "58c35c0ac430a26c730391c1d73a1de253b7f69a02a2b938f3d397f8c16a45ba",
+      "size": 176682821
+    },
+    {
+      "path": "checkpoint-1/rng_state.pth",
+      "sha256": "c8f5735201017fe82a6405a0072c7bcd163e423feb86de6c71ba6b968d1cc9ad",
+      "size": 14709
+    },
+    {
+      "path": "checkpoint-1/scheduler.pt",
+      "sha256": "d1bec70931b4a7f8b688f13cff2fa41335868d37953d0c4497e24ab168c770bd",
+      "size": 1465
+    },
+    {
+      "path": "checkpoint-1/tokenizer.json",
+      "sha256": "06b9509352d2af50381ab2247e083b80d32d5c0aba91c272ca9ff729b6a0e523",
+      "size": 19989325
+    },
+    {
+      "path": "checkpoint-1/tokenizer_config.json",
+      "sha256": "bee8eba30f0eb4af73c0fe2cd06d0f89b657d7819941c438157ec42f7c80ea87",
+      "size": 1123
+    },
+    {
+      "path": "checkpoint-1/trainer_state.json",
+      "sha256": "57047cc94eaa7d26f924ddd06875e1b29a5601964359cc9a42293b026a3973bd",
+      "size": 1085
+    },
+    {
+      "path": "checkpoint-1/training_args.bin",
+      "sha256": "55cd16dd012ff0c53c2dc838d2432024d2bdee55c9673efebd4f1708d70c95b2",
+      "size": 5649
+    },
+    {
+      "path": "run-manifest.json",
+      "sha256": "a1ae85289cfa87132558e0c3fd1ceb5554d752c63cdbc7e843a545ce0d6e920c",
+      "size": 2166
+    }
+  ],
+  "revision": "uncommitted-local-worktree-preflight",
+  "root": "/root/ShadowCrafter/artifacts/checkpoints/shadowcrafter-9b/preflight-20260901T0230Z",
+  "schema_version": "1.0",
+  "total_bytes": 563087726
+}

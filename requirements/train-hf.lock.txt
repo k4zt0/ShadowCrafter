@@ -1,0 +1,11 @@
+# Audited top-level training runtime for the dense 9B Transformers/PEFT backend.
+# Transitive versions are captured per run in artifacts/environment/pip-freeze.txt.
+accelerate==1.14.0
+bitsandbytes==0.50.2
+datasets==4.8.5
+huggingface-hub==1.29.0
+peft==0.19.1
+safetensors==0.8.0
+torch==2.10.0
+transformers==5.12.1
+trl==0.29.1

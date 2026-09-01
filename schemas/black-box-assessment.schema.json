@@ -1,0 +1,137 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://odytssey.example/shadowcrafter/schemas/black-box-assessment.schema.json",
+  "title": "ShadowCrafter Authorized Black-Box Assessment",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "scope", "findings"],
+  "properties": {
+    "schema_version": { "const": "1.0" },
+    "scope": { "$ref": "#/$defs/BlackBoxScope" },
+    "findings": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/BlackBoxFinding" }
+    }
+  },
+  "$defs": {
+    "Authorization": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "authorization_id",
+        "approved_by",
+        "evidence_uri",
+        "evidence_sha256",
+        "valid_from",
+        "valid_until"
+      ],
+      "properties": {
+        "authorization_id": { "type": "string", "minLength": 3, "maxLength": 160 },
+        "approved_by": { "type": "string", "minLength": 2, "maxLength": 200 },
+        "evidence_uri": { "type": "string", "minLength": 1, "maxLength": 2048 },
+        "evidence_sha256": { "type": "string", "pattern": "^[0-9a-fA-F]{64}$" },
+        "valid_from": { "type": "string", "format": "date-time" },
+        "valid_until": { "type": "string", "format": "date-time" }
+      }
+    },
+    "BlackBoxScope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "scope_id",
+        "authorization",
+        "allowed_targets",
+        "safe_methods",
+        "requests_per_minute",
+        "max_concurrency",
+        "allowlist_only",
+        "follow_redirects",
+        "deny_off_scope_redirects",
+        "brute_force_allowed",
+        "denial_of_service_allowed",
+        "credential_testing_allowed",
+        "exploit_execution_allowed",
+        "state_changing_requests_allowed"
+      ],
+      "properties": {
+        "scope_id": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "authorization": { "$ref": "#/$defs/Authorization" },
+        "allowed_targets": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1, "maxLength": 253 }
+        },
+        "safe_methods": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "enum": ["GET", "HEAD", "OPTIONS"] },
+          "default": ["GET", "HEAD", "OPTIONS"]
+        },
+        "requests_per_minute": { "type": "integer", "minimum": 1, "maximum": 60 },
+        "max_concurrency": { "type": "integer", "minimum": 1, "maximum": 4 },
+        "allowlist_only": { "const": true },
+        "follow_redirects": { "const": false },
+        "deny_off_scope_redirects": { "const": true },
+        "brute_force_allowed": { "const": false },
+        "denial_of_service_allowed": { "const": false },
+        "credential_testing_allowed": { "const": false },
+        "exploit_execution_allowed": { "const": false },
+        "state_changing_requests_allowed": { "const": false }
+      }
+    },
+    "BlackBoxFinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "assessment_type",
+        "finding_id",
+        "scope_id",
+        "target",
+        "assessed_methods",
+        "title",
+        "observation",
+        "severity",
+        "confidence",
+        "evidence",
+        "remediation",
+        "exploit_attempted",
+        "payload_included"
+      ],
+      "properties": {
+        "assessment_type": { "const": "black_box" },
+        "finding_id": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "scope_id": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "target": { "type": "string", "minLength": 1, "maxLength": 2048 },
+        "assessed_methods": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "enum": ["GET", "HEAD", "OPTIONS"] }
+        },
+        "title": { "type": "string", "minLength": 1, "maxLength": 300 },
+        "observation": { "type": "string", "minLength": 1, "maxLength": 6000 },
+        "severity": {
+          "enum": ["informational", "low", "medium", "high", "critical"]
+        },
+        "confidence": { "enum": ["low", "medium", "high"] },
+        "cve_candidates": {
+          "type": "array",
+          "items": { "type": "string", "pattern": "^CVE-(19|20)[0-9]{2}-[0-9]{4,}$" }
+        },
+        "cwe_candidates": {
+          "type": "array",
+          "items": { "type": "string", "pattern": "^CWE-[0-9]{1,5}$" }
+        },
+        "evidence": { "type": "array", "minItems": 1, "items": { "type": "object" } },
+        "remediation": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "exploit_attempted": { "const": false },
+        "payload_included": { "const": false }
+      }
+    }
+  }
+}

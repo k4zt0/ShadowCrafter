@@ -1,0 +1,53 @@
+project:
+  name: ShadowCrafter-9B
+  owner: Odytssey
+  purpose: defensive-first cybersecurity assistant
+base_model:
+  id: ornith-ai/Ornith-1.5-9B
+  revision: 489cb97981b8654bcfcf30ce1f94ed1b62e07b53
+  license: MIT
+  architecture: qwen3_5
+  text_model_class: Qwen3_5ForCausalLM
+  trust_remote_code: false
+training:
+  backend: transformers_peft
+  method: qlora
+  load_in_4bit: true
+  quant_type: nf4
+  double_quant: true
+  compute_dtype: bfloat16
+  max_sequence_length: 4096
+  lora_rank: 32
+  lora_alpha: 64
+  lora_dropout: 0.05
+  target_modules:
+    - q_proj
+    - k_proj
+    - v_proj
+    - o_proj
+    - in_proj_qkv
+    - in_proj_z
+    - in_proj_b
+    - in_proj_a
+    - out_proj
+    - gate_proj
+    - up_proj
+    - down_proj
+  expected_target_module_count: 248
+  per_device_train_batch_size: 1
+  gradient_accumulation_steps: 32
+  learning_rate: 0.0001
+  warmup_ratio: 0.03
+  epochs: 2
+  gradient_checkpointing: true
+  completion_only_loss: true
+  assistant_only_loss: false
+  packing: false
+  eval_packing: false
+  padding_free: false
+  enable_thinking: false
+  optimizer: paged_adamw_8bit
+  seed: 20260901
+release:
+  hf_repo: KaztoRay/ShadowCrafter-9B
+  private: true

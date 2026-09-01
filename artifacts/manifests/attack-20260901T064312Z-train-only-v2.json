@@ -1,0 +1,27 @@
+{
+  "artifact_id": "attack-20260901T064312Z-train-only-v2",
+  "contamination": {
+    "ctibench_case_count": 5533,
+    "ctibench_cases_sha256": "e78c90f1d4d9f75cd9a8011cad80b9614654f1d4a86c536144da0bc79e85a14f",
+    "exact_or_embedded_overlap_count": 0,
+    "scanner": "assert_no_ctibench_training_contamination"
+  },
+  "dataset_sha256": "7acb3cbea64d3a100b1da3ead4b52cfab659ee0b3b68e9d83c4f6ae1384c2329",
+  "prepared_manifest": {
+    "path": "data/processed/attack-20260901T064312Z-train-only-v2/manifest.json",
+    "sha256": "ed4c473e9971f51d8293f8f2a7b292ce85573f15074e407431228ce5401d3307"
+  },
+  "registry_sha256": "efd765039942a76d41bc2ea507ff4fbaa4ebb949cd5c21c91175f960a868519b",
+  "schema_version": 1,
+  "split_policy": {
+    "eligible_for_release_evaluation": false,
+    "mode": "train_only",
+    "separate_evaluation_required": true
+  },
+  "train": {
+    "path": "data/processed/attack-20260901T064312Z-train-only-v2/train.jsonl",
+    "record_count": 2017,
+    "sha256": "804c7a633154c36e475e0682f6cf765307f54342c0b3260527593027b31ce40f",
+    "size": 5965388
+  }
+}

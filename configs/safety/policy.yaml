@@ -1,0 +1,17 @@
+version: 1
+default: deny
+allowed:
+  - defensive detection, triage, reporting, remediation, and incident response
+  - secure code review and non-operational proof-of-concept explanation
+  - sandboxed validation with explicit authorization and human approval
+blocked:
+  - credential theft, phishing deployment, or secret collection
+  - destructive actions, ransomware, persistence, or malware deployment
+  - evasion, stealth, anti-forensics, or bypassing monitoring
+  - targeting third-party systems without explicit authorization
+soar:
+  execution_default: plan_only
+  human_approval_required: true
+  allowlist_required: true
+  audit_log_required: true
+

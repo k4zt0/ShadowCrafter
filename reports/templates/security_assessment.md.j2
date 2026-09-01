@@ -1,0 +1,302 @@
+{#
+  ShadowCrafter defensive security-assessment template.
+
+  Expected context (all values may be omitted unless organizational policy says otherwise):
+    title, report_id, classification, status, assessment_date, prepared_at_utc,
+    prepared_by, reviewers, model, authorization, executive_summary, objectives,
+    scope, methodology, limitations, findings, positive_observations, risk_summary,
+    recommendations, evidence_register, data_handling, evaluation, approvals,
+    appendix, references.
+
+  Do not place credentials, live secrets, malware binaries, weaponized payloads, or
+  unnecessary personal data in the rendering context. Findings must be human-reviewed.
+#}
+{% set model = model | default({}, true) %}
+{% set authorization = authorization | default({}, true) %}
+{% set scope = scope | default({}, true) %}
+{% set methodology = methodology | default({}, true) %}
+{% set data_handling = data_handling | default({}, true) %}
+{% set evaluation = evaluation | default({}, true) %}
+# {{ title | default("Security Assessment", true) }}
+
+> **{{ status | default("DRAFT — HUMAN REVIEW REQUIRED", true) }}**<br>
+> This defensive assessment is limited to the authorization and scope recorded below.
+> ShadowCrafter output is advisory and must not trigger autonomous high-impact actions.
+
+| Field | Value |
+|---|---|
+| Report ID | {{ report_id | default("Not assigned", true) }} |
+| Classification | {{ classification | default("Internal / need-to-know", true) }} |
+| Assessment date | {{ assessment_date | default("Not recorded", true) }} |
+| Prepared at (UTC) | {{ prepared_at_utc | default("Not recorded", true) }} |
+| Prepared by | {{ prepared_by | default("Not recorded", true) }} |
+| Human reviewers | {{ reviewers | default([], true) | join(", ") or "Not assigned" }} |
+| Model assistance | {{ model.name | default("Not used or not recorded", true) }} |
+| Model revision | {{ model.revision | default("Not recorded", true) }} |
+| Evaluation status | {{ evaluation.status | default("Not evaluated", true) }} |
+
+## 1. Authorization and rules of engagement
+
+- **Authorizing party:** {{ authorization.authorizing_party | default("Not recorded", true) }}
+- **Authorization reference:** {{ authorization.reference | default("Not recorded", true) }}
+- **Valid window:** {{ authorization.valid_from | default("Not recorded", true) }} to
+  {{ authorization.valid_until | default("Not recorded", true) }}
+- **Assessment environment:** {{ authorization.environment | default("Not recorded", true) }}
+- **Operator contact:** {{ authorization.operator_contact | default("Not recorded", true) }}
+- **Emergency/stop contact:** {{ authorization.stop_contact | default("Not recorded", true) }}
+
+### In-scope assets
+
+{% for asset in scope.in_scope | default([], true) %}
+- {{ asset }}
+{% else %}
+- No in-scope assets were recorded. Assessment work must not proceed until scope is explicit.
+{% endfor %}
+
+### Out-of-scope assets
+
+{% for asset in scope.out_of_scope | default([], true) %}
+- {{ asset }}
+{% else %}
+- Not recorded.
+{% endfor %}
+
+### Constraints and stop conditions
+
+{% for constraint in authorization.constraints | default([], true) %}
+- {{ constraint }}
+{% else %}
+- Use non-destructive validation only; stop on unexpected impact, scope ambiguity, or evidence of exposure.
+{% endfor %}
+
+{% for condition in authorization.stop_conditions | default([], true) %}
+- {{ condition }}
+{% endfor %}
+
+## 2. Executive summary
+
+{{ executive_summary | default("No executive summary has been approved.", true) }}
+
+### Objectives
+
+{% for objective in objectives | default([], true) %}
+- {{ objective }}
+{% else %}
+- Objectives were not recorded.
+{% endfor %}
+
+### Risk summary
+
+{% for item in risk_summary | default([], true) %}
+- **{{ item.label | default("Unclassified", true) }}:**
+  {{ item.count | default("Not counted", true) }} — {{ item.note | default("", true) }}
+{% else %}
+- No reviewed risk totals are available.
+{% endfor %}
+
+Risk labels are prioritization aids, not proof of exploitability or business impact.
+
+## 3. Methodology and limitations
+
+### Standards and methods
+
+{% for standard in methodology.standards | default([], true) %}
+- {{ standard }}
+{% else %}
+- No standard or methodology was recorded.
+{% endfor %}
+
+### Activities performed
+
+{% for activity in methodology.activities | default([], true) %}
+- {{ activity }}
+{% else %}
+- No activities were recorded.
+{% endfor %}
+
+### Tools and data sources
+
+{% for tool in methodology.tools | default([], true) %}
+- **{{ tool.name | default("Unnamed tool", true) }}**
+  {% if tool.version | default("", true) %}(version {{ tool.version }}){% endif %}:
+  {{ tool.purpose | default("Purpose not recorded", true) }}
+{% else %}
+- No tools were recorded.
+{% endfor %}
+
+{% for source in methodology.sources | default([], true) %}
+- {{ source }}
+{% endfor %}
+
+### Limitations and uncertainty
+
+{% for limitation in limitations | default([], true) %}
+- {{ limitation }}
+{% else %}
+- Coverage, freshness, and false-negative limitations were not documented.
+{% endfor %}
+
+## 4. Findings
+
+{% for finding in findings | default([], true) %}
+{% set cvss = finding.cvss | default({}, true) %}
+{% set retest = finding.retest | default({}, true) %}
+### {{ finding.id | default("UNASSIGNED", true) }} — {{ finding.title | default("Untitled finding", true) }}
+
+- **Review status:** {{ finding.status | default("Unverified", true) }}
+- **Severity:** {{ finding.severity | default("Not rated", true) }}
+- **Confidence:** {{ finding.confidence | default("Not rated", true) }}
+- **Affected assets:** {{ finding.affected_assets | default([], true) | join(", ") or "Not recorded" }}
+- **CVE:** {{ finding.cve_ids | default([], true) | join(", ") or "None assigned" }}
+- **CWE:** {{ finding.cwe_ids | default([], true) | join(", ") or "None assigned" }}
+- **CVSS:** {{ cvss.score | default("Not scored", true) }}
+  {% if cvss.vector | default("", true) %}(`{{ cvss.vector }}`){% endif %}
+  {% if cvss.version | default("", true) %}using CVSS {{ cvss.version }}{% endif %}
+- **Owner / target date:** {{ finding.owner | default("Unassigned", true) }} /
+  {{ finding.target_date | default("Not set", true) }}
+
+#### Observation
+
+{{ finding.observation | default("No reviewed observation was recorded.", true) }}
+
+#### Evidence and provenance
+
+{% for evidence in finding.evidence | default([], true) %}
+- **{{ evidence.id | default("Unassigned evidence", true) }}:**
+  {{ evidence.summary | default("Summary not recorded", true) }}
+  - Source: {{ evidence.source | default("Not recorded", true) }}
+  - Collected at (UTC): {{ evidence.collected_at_utc | default("Not recorded", true) }}
+  - SHA-256: `{{ evidence.sha256 | default("Not recorded", true) }}`
+  - Handling/redaction: {{ evidence.handling | default("Not recorded", true) }}
+{% else %}
+- No evidence reference was recorded. Do not treat this item as validated.
+{% endfor %}
+
+Do not embed credentials, personal data, live malware, or weaponized reproduction material.
+Store sensitive evidence in the approved access-controlled evidence location and reference it
+by an opaque identifier and hash.
+
+#### Impact
+
+{{ finding.impact | default("Impact has not been established.", true) }}
+
+#### Safe validation
+
+{{ finding.validation | default("No non-destructive validation procedure was approved.", true) }}
+
+Validation must stay inside the recorded authorization and must not create persistence,
+exfiltrate data, evade controls, or disrupt service.
+
+#### Remediation
+
+{% for action in finding.remediation | default([], true) %}
+{{ loop.index }}. {{ action }}
+{% else %}
+1. Remediation has not been reviewed.
+{% endfor %}
+
+#### Compensating controls and detection
+
+{% for control in finding.compensating_controls | default([], true) %}
+- {{ control }}
+{% else %}
+- No compensating control was recorded.
+{% endfor %}
+
+{% for detection in finding.detection_recommendations | default([], true) %}
+- {{ detection }}
+{% else %}
+- No detection recommendation was recorded.
+{% endfor %}
+
+#### Retest
+
+- **Retest status:** {{ retest.status | default("Not scheduled", true) }}
+- **Retest date:** {{ retest.date | default("Not set", true) }}
+- **Retest result:** {{ retest.result | default("Not available", true) }}
+
+---
+{% else %}
+No findings have been entered. This does not demonstrate that the assessed assets are secure.
+{% endfor %}
+
+## 5. Positive observations
+
+{% for observation in positive_observations | default([], true) %}
+- {{ observation }}
+{% else %}
+- None recorded.
+{% endfor %}
+
+## 6. Prioritized recommendations
+
+{% for recommendation in recommendations | default([], true) %}
+{{ loop.index }}. **{{ recommendation.priority | default("Unranked", true) }} —
+   {{ recommendation.title | default("Untitled recommendation", true) }}**<br>
+   {{ recommendation.detail | default("No reviewed detail.", true) }}<br>
+   Owner: {{ recommendation.owner | default("Unassigned", true) }};
+   target: {{ recommendation.target_date | default("Not set", true) }};
+   validation: {{ recommendation.validation | default("Not defined", true) }}.
+{% else %}
+1. No recommendations have been approved.
+{% endfor %}
+
+Generated SIEM/SOAR changes must remain dry-run or approval-pending. Isolation, blocking,
+deletion, account changes, key rotation, and external notification require authenticated
+human authorization and a rollback plan.
+
+## 7. Evidence register and data handling
+
+{% for evidence in evidence_register | default([], true) %}
+- **{{ evidence.id | default("Unassigned", true) }}** —
+  {{ evidence.description | default("No description", true) }};
+  source: {{ evidence.source | default("Not recorded", true) }};
+  SHA-256: `{{ evidence.sha256 | default("Not recorded", true) }}`;
+  custodian: {{ evidence.custodian | default("Not recorded", true) }};
+  retention: {{ evidence.retention | default("Not recorded", true) }}.
+{% else %}
+- No evidence register was supplied.
+{% endfor %}
+
+- **Data classification:** {{ data_handling.classification | default("Not recorded", true) }}
+- **Storage location/reference:** {{ data_handling.location | default("Not recorded", true) }}
+- **Redactions performed:** {{ data_handling.redactions | default("Not recorded", true) }}
+- **Retention/deletion rule:** {{ data_handling.retention | default("Not recorded", true) }}
+
+## 8. Model-assistance disclosure and quality checks
+
+- **Model/revision:** {{ model.name | default("Not recorded", true) }} /
+  {{ model.revision | default("Not recorded", true) }}
+- **Prompt or workflow revision:** {{ model.workflow_revision | default("Not recorded", true) }}
+- **Human verification performed:** {{ evaluation.human_verified | default("No", true) }}
+- **Citation verification:** {{ evaluation.citations_verified | default("No", true) }}
+- **False-positive review:** {{ evaluation.false_positive_review | default("Not recorded", true) }}
+- **Known coverage gaps:** {{ evaluation.coverage_gaps | default("Not recorded", true) }}
+
+No project-wide or task-specific “94% accuracy” claim may be inferred from this assessment.
+Any model-performance claim requires a named immutable model revision, predeclared test
+snapshot, metric definition, sample count, confidence interval where applicable, slice
+results, and contamination evidence.
+
+## 9. Approval
+
+{% for approval in approvals | default([], true) %}
+- **{{ approval.role | default("Reviewer", true) }}:**
+  {{ approval.name | default("Not signed", true) }} —
+  {{ approval.decision | default("Pending", true) }} at
+  {{ approval.timestamp_utc | default("Not recorded", true) }}
+{% else %}
+- Approval pending. This report remains a draft.
+{% endfor %}
+
+## Appendix
+
+{{ appendix | default("No appendix.", true) }}
+
+### References
+
+{% for reference in references | default([], true) %}
+- {{ reference }}
+{% else %}
+- No references recorded.
+{% endfor %}

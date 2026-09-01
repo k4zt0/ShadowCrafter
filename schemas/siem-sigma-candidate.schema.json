@@ -1,0 +1,133 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://odytssey.example/shadowcrafter/schemas/siem-sigma-candidate.schema.json",
+  "title": "ShadowCrafter SIEM and Sigma Candidate",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "candidate_only", "human_review_required"],
+  "properties": {
+    "schema_version": { "const": "1.0" },
+    "siem_query": { "oneOf": [{ "$ref": "#/$defs/SIEMQuery" }, { "type": "null" }] },
+    "sigma_rule": { "oneOf": [{ "$ref": "#/$defs/SigmaRule" }, { "type": "null" }] },
+    "stix_references": { "type": "array", "items": { "type": "object" } },
+    "sarif_references": { "type": "array", "items": { "type": "object" } },
+    "candidate_only": { "const": true },
+    "human_review_required": { "const": true }
+  },
+  "anyOf": [
+    {
+      "required": ["siem_query"],
+      "properties": { "siem_query": { "$ref": "#/$defs/SIEMQuery" } }
+    },
+    {
+      "required": ["sigma_rule"],
+      "properties": { "sigma_rule": { "$ref": "#/$defs/SigmaRule" } }
+    }
+  ],
+  "$defs": {
+    "SIEMQuery": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "candidate_id",
+        "title",
+        "language",
+        "query",
+        "data_sources",
+        "required_fields",
+        "false_positive_notes",
+        "validation_notes",
+        "read_only",
+        "candidate_only",
+        "human_review_required"
+      ],
+      "properties": {
+        "candidate_id": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "title": { "type": "string", "minLength": 1, "maxLength": 300 },
+        "language": { "enum": ["spl", "kql", "lucene", "eql", "sql_read_only"] },
+        "query": { "type": "string", "minLength": 1, "maxLength": 12000 },
+        "data_sources": { "type": "array", "minItems": 1, "items": { "type": "string" } },
+        "required_fields": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string" }
+        },
+        "false_positive_notes": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string" }
+        },
+        "validation_notes": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string" }
+        },
+        "read_only": { "const": true },
+        "candidate_only": { "const": true },
+        "human_review_required": { "const": true }
+      }
+    },
+    "SigmaRule": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "candidate_id",
+        "title",
+        "description",
+        "status",
+        "log_source",
+        "conditions",
+        "condition_expression",
+        "false_positive_notes",
+        "level",
+        "candidate_only",
+        "human_review_required"
+      ],
+      "properties": {
+        "candidate_id": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "title": { "type": "string", "minLength": 1, "maxLength": 300 },
+        "description": { "type": "string", "minLength": 1, "maxLength": 6000 },
+        "status": { "const": "experimental" },
+        "log_source": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "category": { "type": ["string", "null"] },
+            "product": { "type": ["string", "null"] },
+            "service": { "type": ["string", "null"] }
+          },
+          "minProperties": 1
+        },
+        "conditions": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["field", "operator", "values"],
+            "properties": {
+              "field": { "type": "string", "minLength": 1 },
+              "operator": {
+                "enum": ["equals", "contains", "starts_with", "ends_with", "regex"]
+              },
+              "values": {
+                "type": "array",
+                "minItems": 1,
+                "items": { "type": "string" }
+              }
+            }
+          }
+        },
+        "condition_expression": { "type": "string", "minLength": 1, "maxLength": 500 },
+        "false_positive_notes": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string" }
+        },
+        "level": { "enum": ["informational", "low", "medium", "high", "critical"] },
+        "candidate_only": { "const": true },
+        "human_review_required": { "const": true }
+      }
+    }
+  }
+}

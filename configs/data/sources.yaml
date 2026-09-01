@@ -1,0 +1,838 @@
+version: 2
+policy:
+  unknown_source: prohibited
+  missing_or_ambiguous_license: quarantine
+  raw_malware: prohibited
+  eval_to_train: prohibited
+  split_before_instruction_generation: true
+  require_content_sha256: true
+  require_group_split: true
+  temporal_holdout_requires_cutoff: true
+  max_snapshot_bytes: 268435456
+
+# `allow_train`, `rag_only`, `eval_only`, `quarantine`, and `prohibited` are
+# mutually exclusive. Moving a source to a broader class requires a reviewed
+# registry change; collection code may never widen the class dynamically.
+sources:
+  - id: odytssey-curated-security-instructions
+    title: Odytssey reviewed defensive-security instructions
+    provider: Odytssey
+    type: git
+    policy_class: allow_train
+    allowed_purposes: [train, rag]
+    url: https://github.com/Odytssey/ShadowCrafter.git
+    license:
+      id: Apache-2.0
+      url: https://www.apache.org/licenses/LICENSE-2.0
+      status: verified
+      redistribution: notice_required
+      attribution_required: true
+    attribution: Odytssey ShadowCrafter curated data
+    mutable: true
+    temporal_snapshot: true
+    safety:
+      content_kind: defensive_guidance
+      raw_malware_binaries: false
+      executable_content: false
+      required_filters: [human-review, secret-scan, pii-scan, dual-use-policy]
+    split_group_keys: [provenance.record_key, split_group]
+    time_fields: [labels.published_at, provenance.retrieved_at]
+
+  - id: cve-list-v5
+    title: Official CVE List V5
+    provider: CVE Program
+    type: git
+    policy_class: rag_only
+    allowed_purposes: [rag]
+    url: https://github.com/CVEProject/cvelistV5.git
+    license:
+      id: CVE-Program-Terms-of-Use
+      url: https://www.cve.org/Legal/TermsOfUse
+      status: verified
+      redistribution: terms_limited
+      attribution_required: true
+    attribution: CVE Program; preserve CNA and ADP attribution in each record
+    mutable: true
+    temporal_snapshot: true
+    safety:
+      content_kind: structured_records
+      raw_malware_binaries: false
+      executable_content: false
+      required_filters: [reject-records-without-cna-provenance, normalize-cve-state]
+    split_group_keys: [cveMetadata.cveId]
+    time_fields: [cveMetadata.datePublished, cveMetadata.dateUpdated]
+    notes: Mutable operational truth belongs in the knowledge database, not model weights.
+
+  - id: nvd-cve-api
+    title: NIST National Vulnerability Database CVE API 2.0
+    provider: NIST
+    type: http_api
+    policy_class: rag_only
+    allowed_purposes: [rag]
+    url: https://services.nvd.nist.gov/rest/json/cves/2.0
+    license:
+      id: NIST-Public-Data-Terms
+      url: https://www.nist.gov/open/copyrights-fair-use-and-licensing-statements-srd-data-and-software
+      status: verified
+      redistribution: terms_limited
+      attribution_required: true
+    attribution: National Vulnerability Database, National Institute of Standards and Technology
+    mutable: true
+    temporal_snapshot: true
+    safety:
+      content_kind: structured_records
+      raw_malware_binaries: false
+      executable_content: false
+      required_filters: [respect-api-rate-limits, retain-provider-fields, normalize-cve-state]
+    split_group_keys: [cve.id]
+    time_fields: [cve.published, cve.lastModified]
+    notes: Use paginated incremental windows; never scrape the NVD website.
+
+  - id: cisa-vulnrichment
+    title: CISA Vulnrichment ADP data
+    provider: CISA
+    type: git
+    policy_class: rag_only
+    allowed_purposes: [rag]
+    url: https://github.com/cisagov/vulnrichment.git
+    license:
+      id: CC0-1.0
+      url: https://github.com/cisagov/vulnrichment/blob/develop/LICENSE
+      status: verified
+      redistribution: allowed
+      attribution_required: true
+    attribution: CISA Vulnrichment Authorized Data Publisher
+    mutable: true
+    temporal_snapshot: true
+    safety:
+      content_kind: structured_records
+      raw_malware_binaries: false
+      executable_content: false
+      required_filters: [retain-adp-provider, retain-container-version, normalize-cve-state]
+    split_group_keys: [cveMetadata.cveId]
+    time_fields: [cveMetadata.datePublished, cveMetadata.dateUpdated]
+
+  - id: cisa-kev
+    title: CISA Known Exploited Vulnerabilities Catalog
+    provider: CISA
+    type: http_json
+    policy_class: rag_only
+    allowed_purposes: [rag]
+    url: https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json
+    license:
+      id: US-Government-Work
+      url: https://www.cisa.gov/about/website-policies
+      status: verified
+      redistribution: terms_limited
+      attribution_required: true
+    attribution: CISA Known Exploited Vulnerabilities Catalog
+    mutable: true
+    temporal_snapshot: true
+    snapshot:
+      enabled: true
+      max_bytes: 52428800
+      allowed_media_types: [application/json, application/octet-stream]
+    safety:
+      content_kind: structured_records
+      raw_malware_binaries: false
+      executable_content: false
+      required_filters: [normalize-cve-id, preserve-date-added]
+    split_group_keys: [cveID]
+    time_fields: [dateAdded]
+
+  - id: github-advisory-database
+    title: GitHub Advisory Database
+    provider: GitHub
+    type: git
+    policy_class: rag_only
+    allowed_purposes: [rag]
+    url: https://github.com/github/advisory-database.git
+    license:
+      id: CC-BY-4.0
+      url: https://creativecommons.org/licenses/by/4.0/legalcode
+      status: verified
+      redistribution: attribution_required
+      attribution_required: true
+    attribution: GitHub Advisory Database and the advisory's credited origin
+    mutable: true
+    temporal_snapshot: true
+    safety:
+      content_kind: structured_records
+      raw_malware_binaries: false
+      executable_content: false
+      required_filters: [retain-osv-aliases, retain-withdrawn-state]
+    split_group_keys: [id, aliases]
+    time_fields: [published, modified, withdrawn]
+
+  - id: osv-schema
+    title: OpenSSF Open Source Vulnerability schema
+    provider: OpenSSF
+    type: git
+    policy_class: allow_train
+    allowed_purposes: [train, rag]
+    url: https://github.com/ossf/osv-schema.git
+    license:
+      id: Apache-2.0
+      url: https://github.com/ossf/osv-schema/blob/main/LICENSE
+      status: verified
+      redistribution: notice_required
+      attribution_required: true
+    attribution: OpenSSF OSV Schema contributors
+    mutable: true
+    temporal_snapshot: true
+    safety:
+      content_kind: security_schema
+      raw_malware_binaries: false
+      executable_content: false
+      required_filters: [documentation-and-schema-only, exclude-test-vulnerability-content]
+    split_group_keys: [document-path]
+    time_fields: [git.commit_time]
+
+  - id: osv-aggregated-vulnerability-data
+    title: OSV.dev aggregated vulnerability data
+    provider: Google and upstream ecosystem databases
+    type: website
+    policy_class: quarantine
+    allowed_purposes: [manual_review]
+    url: https://osv.dev/list
+    license:
+      id: per-origin-record-license-review-required
+      url: https://ossf.github.io/osv-schema/#who-is-using-osv
+      status: review_required
+      redistribution: not_verified
+      attribution_required: true
+    attribution: Preserve every upstream advisory database and record credit
+    mutable: true
+    temporal_snapshot: true
+    safety:
+      content_kind: structured_records
+      raw_malware_binaries: false
+      executable_content: false
+      required_filters: [per-origin-license, exclude-malicious-package-payloads, secret-scan]
+    split_group_keys: [id, aliases]
+    time_fields: [published, modified, withdrawn]
+    notes: The OSV schema license does not grant rights to every aggregated advisory record.
+
+  - id: epss-daily-scores
+    title: Exploit Prediction Scoring System daily scores
+    provider: FIRST EPSS SIG and Empirical Security
+    type: http_gzip_csv
+    policy_class: rag_only
+    allowed_purposes: [rag]
+    url: https://epss.empiricalsecurity.com/epss_scores-current.csv.gz
+    license:
+      id: FIRST-EPSS-Public-Use
+      url: https://www.first.org/epss/faq.html
+      status: verified
+      redistribution: attribution_required
+      attribution_required: true
+    attribution: FIRST EPSS SIG; scores generated by Empirical Security
+    mutable: true
+    temporal_snapshot: true
+    safety:
+      content_kind: structured_records
+      raw_malware_binaries: false
+      executable_content: false
+      required_filters: [preserve-model-version, preserve-score-date, validate-probability-range]
+    split_group_keys: [cve]
+    time_fields: [score_date]
+    notes: Bulk collection must use the daily CSV, not the lookup API.
+
+  - id: mitre-cwe
+    title: Common Weakness Enumeration
+    provider: MITRE
+    type: http_archive
+    policy_class: allow_train
+    allowed_purposes: [train, rag]
+    url: https://cwe.mitre.org/data/downloads.html
+    license:
+      id: MITRE-CWE-Terms-of-Use
+      url: https://cwe.mitre.org/about/termsofuse.html
+      status: verified
+      redistribution: attribution_required
+      attribution_required: true
+    attribution: Copyright The MITRE Corporation; reproduced under the CWE Terms of Use
+    mutable: true
+    temporal_snapshot: true
+    safety:
+      content_kind: taxonomy
+      raw_malware_binaries: false
+      executable_content: false
+      required_filters: [preserve-cwe-version, preserve-status, exclude-observed-exploit-payloads]
+    split_group_keys: [CWE-ID]
+    time_fields: [release-date]
+
+  - id: mitre-capec
+    title: Common Attack Pattern Enumeration and Classification
+    provider: MITRE
+    type: http_archive
+    policy_class: allow_train
+    allowed_purposes: [train, rag]
+    url: https://capec.mitre.org/data/downloads.html
+    license:
+      id: MITRE-CAPEC-Terms-of-Use
+      url: https://capec.mitre.org/about/termsofuse.html
+      status: verified
+      redistribution: attribution_required
+      attribution_required: true
+    attribution: Copyright The MITRE Corporation; reproduced under the CAPEC Terms of Use
+    mutable: true
+    temporal_snapshot: true
+    safety:
+      content_kind: taxonomy
+      raw_malware_binaries: false
+      executable_content: false
+      required_filters: [preserve-capec-version, defensive-framing, exclude-weaponized-payloads]
+    split_group_keys: [CAPEC-ID]
+    time_fields: [release-date]
+
+  - id: mitre-attack-enterprise
+    title: MITRE ATT&CK Enterprise STIX data
+    provider: MITRE
+    type: http_json
+    policy_class: allow_train
+    allowed_purposes: [train, rag]
+    url: https://raw.githubusercontent.com/mitre-attack/attack-stix-data/master/enterprise-attack/enterprise-attack.json
+    license:
+      id: MITRE-ATTACK-Terms-of-Use
+      url: https://github.com/mitre-attack/attack-stix-data/blob/master/LICENSE.txt
+      status: verified
+      redistribution: attribution_required
+      attribution_required: true
+    attribution: Copyright The MITRE Corporation; reproduced under the ATT&CK Terms of Use
+    mutable: true
+    temporal_snapshot: true
+    snapshot:
+      enabled: true
+      max_bytes: 104857600
+      allowed_media_types: [application/json, text/plain]
+    safety:
+      content_kind: knowledge_graph
+      raw_malware_binaries: false
+      executable_content: false
+      required_filters: [retain-stix-object-id, retain-revoked-state, defensive-framing]
+    split_group_keys: [id, external_references.external_id]
+    time_fields: [created, modified]
+
+  - id: mitre-attack-mobile
+    title: MITRE ATT&CK Mobile STIX data
+    provider: MITRE
+    type: http_json
+    policy_class: allow_train
+    allowed_purposes: [train, rag]
+    url: https://raw.githubusercontent.com/mitre-attack/attack-stix-data/master/mobile-attack/mobile-attack.json
+    license:
+      id: MITRE-ATTACK-Terms-of-Use
+      url: https://github.com/mitre-attack/attack-stix-data/blob/master/LICENSE.txt
+      status: verified
+      redistribution: attribution_required
+      attribution_required: true
+    attribution: Copyright The MITRE Corporation; reproduced under the ATT&CK Terms of Use
+    mutable: true
+    temporal_snapshot: true
+    snapshot:
+      enabled: true
+      max_bytes: 52428800
+      allowed_media_types: [application/json, text/plain]
+    safety:
+      content_kind: knowledge_graph
+      raw_malware_binaries: false
+      executable_content: false
+      required_filters: [retain-stix-object-id, retain-revoked-state, defensive-framing]
+    split_group_keys: [id, external_references.external_id]
+    time_fields: [created, modified]
+
+  - id: mitre-attack-ics
+    title: MITRE ATT&CK ICS STIX data
+    provider: MITRE
+    type: http_json
+    policy_class: allow_train
+    allowed_purposes: [train, rag]
+    url: https://raw.githubusercontent.com/mitre-attack/attack-stix-data/master/ics-attack/ics-attack.json
+    license:
+      id: MITRE-ATTACK-Terms-of-Use
+      url: https://github.com/mitre-attack/attack-stix-data/blob/master/LICENSE.txt
+      status: verified
+      redistribution: attribution_required
+      attribution_required: true
+    attribution: Copyright The MITRE Corporation; reproduced under the ATT&CK Terms of Use
+    mutable: true
+    temporal_snapshot: true
+    snapshot:
+      enabled: true
+      max_bytes: 52428800
+      allowed_media_types: [application/json, text/plain]
+    safety:
+      content_kind: knowledge_graph
+      raw_malware_binaries: false
+      executable_content: false
+      required_filters: [retain-stix-object-id, retain-revoked-state, defensive-framing]
+    split_group_keys: [id, external_references.external_id]
+    time_fields: [created, modified]
+
+  - id: mitre-d3fend
+    title: MITRE D3FEND knowledge graph
+    provider: MITRE
+    type: http_api
+    policy_class: rag_only
+    allowed_purposes: [rag]
+    url: https://d3fend.mitre.org/api-docs/
+    license:
+      id: MITRE-D3FEND-Terms-of-Use
+      url: https://d3fend.mitre.org/tou/
+      status: verified
+      redistribution: attribution_required
+      attribution_required: true
+    attribution: Copyright The MITRE Corporation; reproduced under the D3FEND Terms of Use
+    mutable: true
+    temporal_snapshot: true
+    safety:
+      content_kind: knowledge_graph
+      raw_malware_binaries: false
+      executable_content: false
+      required_filters: [preserve-third-party-attribution, defensive-framing, pin-ontology-version]
+    split_group_keys: [d3fend-id]
+    time_fields: [ontology-version]
+    notes: Keep in RAG because the graph includes third-party ATT&CK, ATLAS, and SPARTA content.
+
+  - id: ocsf-schema
+    title: Open Cybersecurity Schema Framework schema
+    provider: OCSF
+    type: git
+    policy_class: allow_train
+    allowed_purposes: [train, rag]
+    url: https://github.com/ocsf/ocsf-schema.git
+    license:
+      id: Apache-2.0
+      url: https://github.com/ocsf/ocsf-schema/blob/main/LICENSE
+      status: verified
+      redistribution: notice_required
+      attribution_required: true
+    attribution: OCSF Schema contributors; retain LICENSE and NOTICE
+    mutable: true
+    temporal_snapshot: true
+    safety:
+      content_kind: security_schema
+      raw_malware_binaries: false
+      executable_content: false
+      required_filters: [schema-and-documentation-only, preserve-schema-version]
+    split_group_keys: [object-path, event-class-uid]
+    time_fields: [git.commit_time]
+
+  - id: oasis-stix2-json-schemas
+    title: OASIS STIX 2 JSON schemas and examples
+    provider: OASIS Open
+    type: git
+    policy_class: allow_train
+    allowed_purposes: [train, rag]
+    url: https://github.com/oasis-open/cti-stix2-json-schemas.git
+    license:
+      id: BSD-3-Clause
+      url: https://github.com/oasis-open/cti-stix2-json-schemas/blob/master/LICENSE
+      status: verified
+      redistribution: notice_required
+      attribution_required: true
+    attribution: OASIS Open CTI STIX 2 JSON Schemas contributors
+    mutable: true
+    temporal_snapshot: true
+    safety:
+      content_kind: security_schema
+      raw_malware_binaries: false
+      executable_content: false
+      required_filters: [schemas-and-benign-examples-only, exclude-payload-artifacts]
+    split_group_keys: [schema-path, example-lineage]
+    time_fields: [git.commit_time]
+
+  - id: sigmahq-rules
+    title: Sigma detection rules
+    provider: SigmaHQ
+    type: git
+    policy_class: rag_only
+    allowed_purposes: [rag]
+    url: https://github.com/SigmaHQ/sigma.git
+    license:
+      id: DRL-1.1
+      url: https://github.com/SigmaHQ/Detection-Rule-License
+      status: verified
+      redistribution: terms_limited
+      attribution_required: true
+    attribution: SigmaHQ and each rule author; retain rule license metadata
+    mutable: true
+    temporal_snapshot: true
+    safety:
+      content_kind: detection_rules
+      raw_malware_binaries: false
+      executable_content: false
+      required_filters: [retain-rule-id, retain-status, retain-author, exclude-test-payloads]
+    split_group_keys: [id]
+    time_fields: [date, modified]
+    notes: DRL terms are source-specific; rules are not copied into general SFT corpora.
+
+  - id: splunk-security-content
+    title: Splunk Security Content
+    provider: Splunk
+    type: git
+    policy_class: allow_train
+    allowed_purposes: [train, rag]
+    url: https://github.com/splunk/security_content.git
+    license:
+      id: Apache-2.0
+      url: https://github.com/splunk/security_content/blob/develop/LICENSE
+      status: verified
+      redistribution: notice_required
+      attribution_required: true
+    attribution: Splunk Security Content contributors; retain LICENSE and NOTICE
+    mutable: true
+    temporal_snapshot: true
+    safety:
+      content_kind: detection_rules
+      raw_malware_binaries: false
+      executable_content: false
+      required_filters: [detections-and-documentation-only, exclude-attack-simulation-code]
+    split_group_keys: [id, name]
+    time_fields: [date, version, git.commit_time]
+
+  - id: splunk-attack-data
+    title: Splunk Attack Data
+    provider: Splunk
+    type: git
+    policy_class: quarantine
+    allowed_purposes: [manual_review]
+    url: https://github.com/splunk/attack_data.git
+    license:
+      id: Apache-2.0
+      url: https://github.com/splunk/attack_data/blob/master/LICENSE
+      status: verified
+      redistribution: notice_required
+      attribution_required: true
+    attribution: Splunk Attack Data contributors; retain LICENSE and NOTICE
+    mutable: true
+    temporal_snapshot: true
+    safety:
+      content_kind: sanitized_telemetry
+      raw_malware_binaries: false
+      executable_content: true
+      required_filters: [manual-hazard-review, telemetry-only, exclude-simulation-code, exclude-pcap]
+    split_group_keys: [dataset, attack-technique]
+    time_fields: [git.commit_time]
+
+  - id: owasp-web-security-testing-guide
+    title: OWASP Web Security Testing Guide
+    provider: OWASP Foundation
+    type: git
+    policy_class: rag_only
+    allowed_purposes: [rag]
+    url: https://github.com/OWASP/wstg.git
+    license:
+      id: CC-BY-SA-4.0
+      url: https://github.com/OWASP/wstg/blob/master/LICENSE
+      status: verified
+      redistribution: terms_limited
+      attribution_required: true
+    attribution: OWASP Web Security Testing Guide contributors
+    mutable: true
+    temporal_snapshot: true
+    safety:
+      content_kind: defensive_guidance
+      raw_malware_binaries: false
+      executable_content: false
+      required_filters: [authorized-testing-framing, exclude-live-target-instructions]
+    split_group_keys: [document-path, test-id]
+    time_fields: [git.commit_time]
+
+  - id: owasp-asvs
+    title: OWASP Application Security Verification Standard
+    provider: OWASP Foundation
+    type: git
+    policy_class: rag_only
+    allowed_purposes: [rag]
+    url: https://github.com/OWASP/ASVS.git
+    license:
+      id: CC-BY-SA-4.0
+      url: https://github.com/OWASP/ASVS/blob/master/LICENSE.md
+      status: verified
+      redistribution: terms_limited
+      attribution_required: true
+    attribution: OWASP Application Security Verification Standard contributors
+    mutable: true
+    temporal_snapshot: true
+    safety:
+      content_kind: defensive_guidance
+      raw_malware_binaries: false
+      executable_content: false
+      required_filters: [pin-release-version, retain-requirement-id, preserve-attribution]
+    split_group_keys: [version, requirement-id]
+    time_fields: [release-version, git.commit_time]
+
+  - id: owasp-cheat-sheet-series
+    title: OWASP Cheat Sheet Series
+    provider: OWASP Foundation
+    type: git
+    policy_class: rag_only
+    allowed_purposes: [rag]
+    url: https://github.com/OWASP/CheatSheetSeries.git
+    license:
+      id: CC-BY-SA-4.0
+      url: https://github.com/OWASP/CheatSheetSeries/blob/master/LICENSE.md
+      status: verified
+      redistribution: terms_limited
+      attribution_required: true
+    attribution: OWASP Cheat Sheet Series contributors
+    mutable: true
+    temporal_snapshot: true
+    safety:
+      content_kind: defensive_guidance
+      raw_malware_binaries: false
+      executable_content: false
+      required_filters: [defensive-sections-only, preserve-attribution, exclude-live-secrets]
+    split_group_keys: [document-path, topic]
+    time_fields: [git.commit_time]
+
+  - id: atomic-red-team
+    title: Atomic Red Team adversary emulation tests
+    provider: Red Canary
+    type: git
+    policy_class: quarantine
+    allowed_purposes: [manual_review]
+    url: https://github.com/redcanaryco/atomic-red-team.git
+    license:
+      id: MIT
+      url: https://github.com/redcanaryco/atomic-red-team/blob/master/LICENSE.txt
+      status: verified
+      redistribution: attribution_required
+      attribution_required: true
+    attribution: Red Canary and Atomic Red Team contributors
+    mutable: true
+    temporal_snapshot: true
+    safety:
+      content_kind: defensive_guidance
+      raw_malware_binaries: false
+      executable_content: true
+      required_filters: [manual-hazard-review, isolated-lab-only, never-in-general-sft]
+    split_group_keys: [attack-technique, atomic-test-guid]
+    time_fields: [git.commit_time]
+
+  - id: nist-juliet-sard
+    title: NIST Juliet Test Suite for C/C++
+    provider: NIST Software Assurance Reference Dataset
+    type: website
+    policy_class: allow_train
+    allowed_purposes: [train, rag]
+    url: https://samate.nist.gov/SARD/test-suites/112
+    license:
+      id: CC0-1.0
+      url: https://creativecommons.org/publicdomain/zero/1.0/legalcode
+      status: verified
+      redistribution: allowed
+      attribution_required: true
+    attribution: NIST SARD Juliet Test Suite
+    mutable: false
+    temporal_snapshot: true
+    safety:
+      content_kind: secure_code
+      raw_malware_binaries: false
+      executable_content: true
+      required_filters: [source-only, never-execute-during-ingestion, preserve-cwe-label]
+    split_group_keys: [testcase-family, cwe-id]
+    time_fields: [suite-version]
+
+  - id: primevul
+    title: PrimeVul source-code vulnerability dataset
+    provider: DLVulDet
+    type: git
+    policy_class: quarantine
+    allowed_purposes: [manual_review]
+    url: https://github.com/DLVulDet/PrimeVul.git
+    license:
+      id: per-origin-file-license-review-required
+      url: https://github.com/DLVulDet/PrimeVul
+      status: review_required
+      redistribution: not_verified
+      attribution_required: true
+    attribution: PrimeVul authors and every upstream source repository
+    mutable: true
+    temporal_snapshot: true
+    safety:
+      content_kind: secure_code
+      raw_malware_binaries: false
+      executable_content: true
+      required_filters: [per-file-license, repository-group-split, commit-time-split, no-execution]
+    split_group_keys: [repository, vulnerability-lineage, commit]
+    time_fields: [commit_time, cve_published]
+
+  - id: ember2024
+    title: EMBER2024 static malware features and labels
+    provider: EMBER project dataset mirror
+    type: huggingface_dataset
+    policy_class: allow_train
+    allowed_purposes: [train, rag]
+    repo_id: joyce8/EMBER2024
+    license:
+      id: Apache-2.0
+      url: https://www.apache.org/licenses/LICENSE-2.0
+      status: verified
+      redistribution: notice_required
+      attribution_required: true
+    attribution: EMBER2024 authors and dataset card citations
+    mutable: true
+    temporal_snapshot: true
+    safety:
+      content_kind: static_features
+      raw_malware_binaries: false
+      executable_content: false
+      required_filters: [features-and-labels-only, reject-byte-payload-columns, family-time-split]
+    split_group_keys: [sha256, malware-family, campaign]
+    time_fields: [first_seen, sample_date]
+
+  - id: ember2024-capa
+    title: EMBER2024 capa-derived reports
+    provider: EMBER project dataset mirror
+    type: huggingface_dataset
+    policy_class: allow_train
+    allowed_purposes: [train, rag]
+    repo_id: joyce8/EMBER2024-capa
+    license:
+      id: Apache-2.0
+      url: https://www.apache.org/licenses/LICENSE-2.0
+      status: verified
+      redistribution: notice_required
+      attribution_required: true
+    attribution: EMBER2024 and capa authors; retain dataset card citations
+    mutable: true
+    temporal_snapshot: true
+    safety:
+      content_kind: sanitized_reports
+      raw_malware_binaries: false
+      executable_content: false
+      required_filters: [sanitized-function-reports-only, reject-embedded-bytes, family-time-split]
+    split_group_keys: [sha256, malware-family, campaign]
+    time_fields: [first_seen, sample_date]
+
+  - id: sevenllm
+    title: SEVENLLM cybersecurity instruction dataset
+    provider: Multilingual-Multimodal-NLP
+    type: huggingface_dataset
+    policy_class: quarantine
+    allowed_purposes: [manual_review]
+    repo_id: Multilingual-Multimodal-NLP/SEVENLLM-Dataset
+    license:
+      id: Apache-2.0-tag-upstream-rights-review-required
+      url: https://huggingface.co/datasets/Multilingual-Multimodal-NLP/SEVENLLM-Dataset
+      status: review_required
+      redistribution: not_verified
+      attribution_required: true
+    attribution: SEVENLLM authors and every retained upstream source
+    mutable: true
+    temporal_snapshot: true
+    safety:
+      content_kind: defensive_guidance
+      raw_malware_binaries: false
+      executable_content: false
+      required_filters: [per-origin-rights, dual-use-policy, benchmark-contamination-scan]
+    split_group_keys: [origin, conversation-lineage]
+    time_fields: [source_date]
+
+  - id: cyberseceval4
+    title: CyberSecEval 4 benchmark
+    provider: Meta
+    type: git
+    policy_class: eval_only
+    allowed_purposes: [evaluate]
+    url: https://github.com/meta-llama/PurpleLlama.git
+    license:
+      id: Purple-Llama-Terms
+      url: https://github.com/meta-llama/PurpleLlama/blob/main/LICENSE
+      status: verified
+      redistribution: terms_limited
+      attribution_required: true
+    attribution: Meta Purple Llama CyberSecEval contributors
+    mutable: true
+    temporal_snapshot: true
+    safety:
+      content_kind: evaluation_benchmark
+      raw_malware_binaries: false
+      executable_content: true
+      required_filters: [evaluation-only, isolated-runner, never-in-prompts-or-training]
+    split_group_keys: [benchmark, case-id, source-lineage]
+    time_fields: [release-version, git.commit_time]
+
+  - id: ctibench
+    title: CTIBench benchmark
+    provider: AI4Sec
+    type: huggingface_dataset
+    policy_class: eval_only
+    allowed_purposes: [evaluate]
+    repo_id: AI4Sec/cti-bench
+    license:
+      id: CC-BY-NC-SA-4.0
+      url: https://creativecommons.org/licenses/by-nc-sa/4.0/legalcode
+      status: verified
+      redistribution: terms_limited
+      attribution_required: true
+    attribution: CTIBench authors and cited source datasets
+    mutable: true
+    temporal_snapshot: true
+    safety:
+      content_kind: evaluation_benchmark
+      raw_malware_binaries: false
+      executable_content: false
+      required_filters:
+        - evaluation-only
+        - never-in-prompts-or-training
+        - contamination-scan
+        - drop-upstream-prompt
+        - answer-key-isolation
+        - noncommercial-use-only
+    split_group_keys: [task, case-id, cve-or-technique-id]
+    time_fields: [release-version]
+    notes: >-
+      Reviewed at Hugging Face commit 9237e1636ee3e168fbe5ebdcc1c571de0525e568.
+      Internal, noncommercial evaluation only. Keep answer keys and choices isolated from
+      training; redistribution or adapted publication requires attribution, ShareAlike,
+      upstream-rights review, and legal approval.
+
+  - id: owasp-benchmark
+    title: OWASP Benchmark for application security testing tools
+    provider: OWASP Foundation
+    type: git
+    policy_class: eval_only
+    allowed_purposes: [evaluate]
+    url: https://github.com/OWASP-Benchmark/BenchmarkJava.git
+    license:
+      id: GPL-2.0-only
+      url: https://github.com/OWASP-Benchmark/BenchmarkJava/blob/master/LICENSE.md
+      status: verified
+      redistribution: terms_limited
+      attribution_required: true
+    attribution: OWASP Benchmark contributors
+    mutable: true
+    temporal_snapshot: true
+    safety:
+      content_kind: evaluation_benchmark
+      raw_malware_binaries: false
+      executable_content: true
+      required_filters: [evaluation-only, isolated-runner, repository-group-split]
+    split_group_keys: [benchmark-version, test-number]
+    time_fields: [release-version, git.commit_time]
+
+  - id: raw-malware-binaries
+    title: Raw executable malware binaries
+    provider: Untrusted or mixed provenance
+    type: local_prohibited
+    policy_class: prohibited
+    allowed_purposes: []
+    license:
+      id: PROHIBITED
+      url: https://github.com/Odytssey/ShadowCrafter/blob/main/docs/DATA_GOVERNANCE.md
+      status: prohibited
+      redistribution: prohibited
+      attribution_required: false
+    mutable: true
+    temporal_snapshot: false
+    safety:
+      content_kind: raw_executable_binary
+      raw_malware_binaries: true
+      executable_content: true
+      required_filters: [reject-before-staging, incident-log, no-git, no-huggingface]
+    split_group_keys: []
+    time_fields: []

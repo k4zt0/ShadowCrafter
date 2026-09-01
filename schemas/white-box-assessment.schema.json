@@ -1,0 +1,107 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://odytssey.example/shadowcrafter/schemas/white-box-assessment.schema.json",
+  "title": "ShadowCrafter Authorized White-Box Assessment",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "scope", "findings"],
+  "properties": {
+    "schema_version": { "const": "1.0" },
+    "scope": { "$ref": "#/$defs/WhiteBoxScope" },
+    "findings": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/WhiteBoxFinding" }
+    }
+  },
+  "$defs": {
+    "WhiteBoxScope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "scope_id",
+        "authorization",
+        "repository_uris",
+        "revisions",
+        "static_analysis_only",
+        "target_code_execution_allowed",
+        "exploit_execution_allowed"
+      ],
+      "properties": {
+        "scope_id": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "authorization": { "type": "object" },
+        "repository_uris": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "minLength": 1, "maxLength": 2048 }
+        },
+        "revisions": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "minLength": 1, "maxLength": 200 }
+        },
+        "included_paths": { "type": "array", "items": { "type": "string" } },
+        "excluded_paths": { "type": "array", "items": { "type": "string" } },
+        "static_analysis_only": { "const": true },
+        "target_code_execution_allowed": { "const": false },
+        "exploit_execution_allowed": { "const": false }
+      }
+    },
+    "WhiteBoxFinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "assessment_type",
+        "finding_id",
+        "scope_id",
+        "title",
+        "summary",
+        "location",
+        "severity",
+        "confidence",
+        "evidence",
+        "remediation",
+        "proof_by_static_reasoning_only",
+        "payload_included"
+      ],
+      "properties": {
+        "assessment_type": { "const": "white_box" },
+        "finding_id": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "scope_id": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "title": { "type": "string", "minLength": 1, "maxLength": 300 },
+        "summary": { "type": "string", "minLength": 1, "maxLength": 6000 },
+        "location": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["repository_uri", "revision", "path", "start_line"],
+          "properties": {
+            "repository_uri": { "type": "string", "minLength": 1 },
+            "revision": { "type": "string", "minLength": 1 },
+            "path": { "type": "string", "minLength": 1 },
+            "start_line": { "type": "integer", "minimum": 1 },
+            "end_line": { "type": ["integer", "null"], "minimum": 1 }
+          }
+        },
+        "severity": {
+          "enum": ["informational", "low", "medium", "high", "critical"]
+        },
+        "confidence": { "enum": ["low", "medium", "high"] },
+        "cve_candidates": {
+          "type": "array",
+          "items": { "type": "string", "pattern": "^CVE-(19|20)[0-9]{2}-[0-9]{4,}$" }
+        },
+        "cwe_candidates": {
+          "type": "array",
+          "items": { "type": "string", "pattern": "^CWE-[0-9]{1,5}$" }
+        },
+        "evidence": { "type": "array", "minItems": 1, "items": { "type": "object" } },
+        "remediation": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "proof_by_static_reasoning_only": { "const": true },
+        "payload_included": { "const": false }
+      }
+    }
+  }
+}

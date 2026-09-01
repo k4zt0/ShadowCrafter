@@ -1,0 +1,94 @@
+# Operating-system and editor files
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+.idea/
+.vscode/
+
+# Python caches and environments
+__pycache__/
+*.py[cod]
+*$py.class
+.Python
+.venv/
+venv/
+env/
+.tox/
+.nox/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+build/
+dist/
+*.egg-info/
+
+# Secrets and local credentials
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+*.crt
+*.cer
+*.kubeconfig
+.ssh/
+secrets/
+
+# Logs and transient run state
+*.log
+logs/
+tmp/
+temp/
+.cache/
+wandb/
+mlruns/
+runs/
+
+# Local datasets and security samples. Track only manifests/documentation.
+data/raw/
+data/staging/
+data/interim/
+data/processed/
+data/quarantine/
+data/snapshots/
+samples/
+malware/
+
+# Local model artifacts. GitHub stores source; private Hugging Face repos mirror releases.
+artifacts/base_models/
+artifacts/checkpoints/
+artifacts/releases/
+artifacts/evaluations/
+artifacts/cache/
+/checkpoints/
+/models/
+*.safetensors
+*.bin
+*.pt
+*.pth
+*.ckpt
+*.gguf
+*.onnx
+*.h5
+*.tflite
+
+# Large generated data formats
+*.arrow
+*.parquet
+*.feather
+*.npy
+*.npz
+*.sqlite
+*.sqlite3
+*.db
+
+# Local reports may contain sensitive findings
+reports/private/
+reports/generated/
