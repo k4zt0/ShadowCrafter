@@ -267,9 +267,9 @@ class TaskGateRule(_StrictModel):
 
 
 class MetricThresholds(_StrictModel):
-    accuracy: float = Field(ge=0.94, le=1.0)
-    balanced_accuracy: float = Field(ge=0.94, le=1.0)
-    macro_f1: float = Field(ge=0.94, le=1.0)
+    accuracy: float = Field(ge=0.95, le=1.0)
+    balanced_accuracy: float = Field(ge=0.95, le=1.0)
+    macro_f1: float = Field(ge=0.95, le=1.0)
 
 
 class CandidateRule(_StrictModel):
@@ -1008,7 +1008,7 @@ def _strict_evaluate(
         "passed": not failures,
         "failures": failures,
         "quality_target_met": quality_target_met,
-        "target_94_met": quality_target_met,
+        "target_95_met": quality_target_met,
         "quality_shortfalls": quality_shortfalls,
         "evidence_manifest_sha256": _sha256_bytes(evidence_content),
         "evaluation_id": evidence.evaluation_id,

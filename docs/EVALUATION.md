@@ -1,11 +1,11 @@
-# Frozen evaluation and the 94% performance gate
+# Frozen evaluation and the 95% performance gate
 
 ShadowCrafter does not accept a hand-written metrics JSON as release evidence. The strict gate
 recomputes scores from raw, frozen predictions and an immutable external benchmark. Missing,
 mutable, contaminated, malformed, unpinned, or aggregate-only evidence fails closed.
 
 Neither ShadowCrafter model currently has a completed prediction bundle that passes this gate.
-Accordingly, the project has not demonstrated a 94% result for either model family.
+Accordingly, the project has not demonstrated a 95% result for ShadowCrafter-9B.
 
 The checked-in protocol supports a **noncommercial, private Experimental Release** evaluation
 against `AI4Sec/cti-bench`. CTIBench is licensed `CC-BY-NC-SA-4.0`; its material may not be used
@@ -78,18 +78,18 @@ The evaluator recomputes these three metrics from the frozen answer key and raw 
 
 | Metric | Threshold |
 |---|---:|
-| Accuracy | `>= 0.94` |
-| Balanced accuracy | `>= 0.94` |
-| Macro-F1 | `>= 0.94` |
+| Accuracy | `>= 0.95` |
+| Balanced accuracy | `>= 0.95` |
+| Macro-F1 | `>= 0.95` |
 
 All three targets are measured both on the complete 5,533-case benchmark and independently on
-every scored CTIBench task. Missing one or all 94% targets does **not** block a private
-`Experimental Release`; the report records `quality_target_met`/`target_94_met: false` and every
+every scored CTIBench task. Missing one or all 95% targets does **not** block a private
+`Experimental Release`; the report records `quality_target_met`/`target_95_met: false` and every
 shortfall. It cannot be labelled a Qualified Release. The generated report includes, for every
 scope, the sample count, reference/observed class counts, and per-class support, predicted count,
 true positives, precision, recall, and F1.
 
-This is an exact frozen-protocol statement, not a claim that ShadowCrafter has “94% security
+This is an exact frozen-protocol statement, not a claim that ShadowCrafter has “95% security
 accuracy” in general. It does not cover report quality, real-world vulnerability discovery,
 malware verdicts, SIEM/SOAR safety, calibration, privacy, or exploit resistance. Those need
 separate predeclared evaluations and reviewers.
@@ -124,7 +124,7 @@ python -m shadowcrafter.cli eval gate \
 
 The report path is created exclusively and is never overwritten. Exit status zero means the
 frozen evaluation, zero-contamination check, and mandatory integrity/provenance/license/privacy/
-safety evidence passed. It does not mean 94% was reached: inspect `quality_target_met` and the
+safety evidence passed. It does not mean 95% was reached: inspect `quality_target_met` and the
 reported scores. Authorization is limited to a noncommercial **private Experimental Release**;
 public visibility and commercial publication remain forbidden.
 
@@ -135,7 +135,7 @@ bounded process memory, submits one private Hub commit, and streams that immutab
 for size/SHA-256 verification without a filesystem cache. It resolves Hugging Face credentials
 only from standard local auth sources and never sends them over SSH. The manifest SHA pin,
 parent-commit race check, private visibility, model-card reporting, approvals, provenance,
-integrity, privacy, safety, and license constraints fail closed; the measured 0.94 target remains
+integrity, privacy, safety, and license constraints fail closed; the measured 0.95 target remains
 nonblocking for this Experimental tier. See [`REMOTE_WORKFLOW.md`](REMOTE_WORKFLOW.md#9-mirror-a-gated-release-privately)
 for its exact CLI and manifest contract. No uploader may fall back to downloading weights locally.
 

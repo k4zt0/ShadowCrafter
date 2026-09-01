@@ -1,0 +1,61 @@
+{
+  "adapter": "ctibench_eval_only_v1",
+  "controls": {
+    "actionable_payload_filter": true,
+    "answer_key_isolated": true,
+    "attribution_required": true,
+    "benchmark_holdout": true,
+    "commercial_use_permitted": false,
+    "evaluation_only": true,
+    "prompt_training_eligible": false,
+    "raw_binary_rejection": true,
+    "security_record_schema_used": false,
+    "share_alike_required_when_adapted_material_is_shared": true,
+    "source_references_are_not_fetched_or_rendered": true,
+    "training_contamination_check_required": true,
+    "trusted_runner_template_required": true,
+    "upstream_prompt_hash_only": true,
+    "upstream_prompt_preserved": false
+  },
+  "dataset_sha256": "e9e527ea138fd2e97a5f2384d33a59f8b79cbb4079b59e30da922d5c2c58dddb",
+  "license": {
+    "attribution": "CTIBench authors and cited source datasets",
+    "attribution_required_when_shared": true,
+    "id": "CC-BY-NC-SA-4.0",
+    "no_additional_downstream_restrictions": true,
+    "noncommercial_only": true,
+    "share_alike_required_when_adapted_material_is_shared": true,
+    "url": "https://creativecommons.org/licenses/by-nc-sa/4.0/legalcode"
+  },
+  "license_id": "CC-BY-NC-SA-4.0",
+  "output": {
+    "path": "/root/ShadowCrafter/artifacts/evaluations/ctibench-9237e163/cases.jsonl",
+    "record_count": 5533,
+    "sha256": "2455b46b4851ed998ce3094ba7d9f796365bd0d71ce51264ff665f1c5203b423",
+    "size": 7961445
+  },
+  "registry_sha256": "bdc69660611ee64db3aa5d3279e9859c81a64c08ba55bd46d0c51fe25fd09405",
+  "repo_id": "AI4Sec/cti-bench",
+  "retrieved_at_utc": "2026-09-01T16:47:53.555403+00:00",
+  "schema_version": 1,
+  "snapshot_manifest": {
+    "path": "/root/ShadowCrafter/data/raw/snapshots/ctibench/ctibench-9237e1636ee3e168fbe5ebdcc1c571de0525e568/manifest.json",
+    "sha256": "ce02c0c543950d5983cb2370ced5f7f949d59e09a8d0af40459b84f7704c1d79"
+  },
+  "source_id": "ctibench",
+  "source_policy_class": "eval_only",
+  "statistics": {
+    "by_task": {
+      "cti-ate": 56,
+      "cti-mcq": 2488,
+      "cti-rcm": 995,
+      "cti-rcm-2021": 999,
+      "cti-vsp": 995
+    },
+    "candidate_count": 5610,
+    "emitted_count": 5533,
+    "missing_ground_truth_skipped": 50,
+    "unsafe_or_invalid_skipped": 27
+  },
+  "upstream_revision": "9237e1636ee3e168fbe5ebdcc1c571de0525e568"
+}

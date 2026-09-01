@@ -252,7 +252,7 @@ def _fixture(tmp_path: Path) -> tuple[Path, str, Path, Path]:
         "schema_version": 2,
         "protocol": "shadowcrafter-frozen-release-evaluation-v1",
         "claim": "Fixture noncommercial private evaluation.",
-        "metric_thresholds": {"accuracy": 0.94, "balanced_accuracy": 0.94, "macro_f1": 0.94},
+        "metric_thresholds": {"accuracy": 0.95, "balanced_accuracy": 0.95, "macro_f1": 0.95},
         "require_per_task_metrics": True,
         "max_contamination_overlap_count": 0,
         "contamination_algorithm": "ctibench-normalized-content-exact-and-containment-v1",

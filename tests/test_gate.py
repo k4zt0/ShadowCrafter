@@ -271,9 +271,9 @@ def _write_bundle(
             "protocol": "shadowcrafter-frozen-release-evaluation-v1",
             "claim": "Fixture-only noncommercial frozen evaluation protocol.",
             "metric_thresholds": {
-                "accuracy": 0.94,
-                "balanced_accuracy": 0.94,
-                "macro_f1": 0.94,
+                "accuracy": 0.95,
+                "balanced_accuracy": 0.95,
+                "macro_f1": 0.95,
             },
             "require_per_task_metrics": True,
             "max_contamination_overlap_count": 0,
@@ -474,7 +474,7 @@ def test_frozen_release_gate_recomputes_metrics_and_class_results(tmp_path: Path
     assert {row["label"]: row["support"] for row in task["classes"]} == {"A": 2, "B": 2}
     assert result.report["contamination"]["overlap_count"] == 0
     assert result.report["quality_target_met"] is True
-    assert result.report["target_94_met"] is True
+    assert result.report["target_95_met"] is True
     assert result.report["authorization"]["commercial_use_permitted"] is False
     assert result.report["authorization"]["model_publication_authorized"] is True
     assert result.report["authorization"]["required_visibility"] == "private"
@@ -494,10 +494,10 @@ def test_quality_shortfall_is_reported_but_does_not_block_experimental_release(
     assert result.failures == ()
     assert result.report is not None
     assert result.report["overall"]["metrics"]["accuracy"] == 0.95
-    assert result.report["overall"]["metrics"]["balanced_accuracy"] < 0.94
-    assert result.report["overall"]["metrics"]["macro_f1"] < 0.94
+    assert result.report["overall"]["metrics"]["balanced_accuracy"] < 0.95
+    assert result.report["overall"]["metrics"]["macro_f1"] < 0.95
     assert result.report["quality_target_met"] is False
-    assert result.report["target_94_met"] is False
+    assert result.report["target_95_met"] is False
     assert any(
         "balanced_accuracy" in shortfall for shortfall in result.report["quality_shortfalls"]
     )
@@ -600,7 +600,7 @@ def test_gate_rejects_threshold_configuration_below_94_percent(tmp_path: Path) -
 
     assert not result.passed
     assert result.report is None
-    assert "greater than or equal to 0.94" in result.failures[0]
+    assert "greater than or equal to 0.95" in result.failures[0]
 
 
 def test_local_weight_publisher_is_disabled_by_retention_policy(tmp_path: Path) -> None:

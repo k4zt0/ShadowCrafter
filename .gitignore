@@ -66,6 +66,7 @@ artifacts/base_models/
 artifacts/checkpoints/
 artifacts/releases/
 artifacts/evaluations/
+artifacts/iterations/
 artifacts/cache/
 /checkpoints/
 /models/

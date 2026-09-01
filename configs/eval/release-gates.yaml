@@ -3,12 +3,12 @@ release_gate:
   protocol: shadowcrafter-frozen-release-evaluation-v1
   claim: >-
     Noncommercial private Experimental Release evaluation: report accuracy,
-    balanced accuracy, and macro-F1 against the 94% target overall and on every
+    balanced accuracy, and macro-F1 against the 95% target overall and on every
     fixed task. Missing the quality target does not block private publication.
   metric_thresholds:
-    accuracy: 0.94
-    balanced_accuracy: 0.94
-    macro_f1: 0.94
+    accuracy: 0.95
+    balanced_accuracy: 0.95
+    macro_f1: 0.95
   require_per_task_metrics: true
   max_contamination_overlap_count: 0
   contamination_algorithm: ctibench-normalized-content-exact-and-containment-v1
@@ -26,10 +26,10 @@ release_gate:
     repository_id: AI4Sec/cti-bench
     upstream_revision: 9237e1636ee3e168fbe5ebdcc1c571de0525e568
     license_id: CC-BY-NC-SA-4.0
-    snapshot_manifest_sha256: 036ad590cd8ca6d61b20acf189dceb03abb8da41848e507f2638000880376e5c
-    adapter_manifest_sha256: b83003faa8bc600d9a4157f8c1a36d43e08d8c13237750094c51f4322b9b40b8
-    cases_sha256: e78c90f1d4d9f75cd9a8011cad80b9614654f1d4a86c536144da0bc79e85a14f
-    dataset_sha256: 1c96fc0b3bb4374fcf12c59d8cbba8f7118c1a4059cb6c973b55599626b464f1
+    snapshot_manifest_sha256: ce02c0c543950d5983cb2370ced5f7f949d59e09a8d0af40459b84f7704c1d79
+    adapter_manifest_sha256: 42ceb7466cd7e8139ba019a52fbf82281e2e176fb455a9192e76588f8b1ff769
+    cases_sha256: 2455b46b4851ed998ce3094ba7d9f796365bd0d71ce51264ff665f1c5203b423
+    dataset_sha256: e9e527ea138fd2e97a5f2384d33a59f8b79cbb4079b59e30da922d5c2c58dddb
     # Pinned adapter output after safety filtering, not the 5,560 raw scorable rows.
     expected_sample_count: 5533
     tasks:

@@ -38,6 +38,7 @@ _REMOTE_EVIDENCE_ROOTS = (
     "/root/ShadowCrafter/artifacts/manifests/",
     "/root/ShadowCrafter/artifacts/preflight/",
     "/root/ShadowCrafter/artifacts/environment/",
+    "/root/ShadowCrafter/artifacts/iterations/",
     "/root/ShadowCrafter/artifacts/checkpoints/",
     "/root/ShadowCrafter/artifacts/automation/",
     "/root/ShadowCrafter/reports/",

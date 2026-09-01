@@ -117,4 +117,4 @@ publication.
 Existing output is always an error. There is no resume or “existing means success” mode. A failed
 or interrupted attempt must use a new evaluation ID and a new output path after the supervisor has
 recorded the failure. The strict evaluator later consumes `predictions.jsonl`; its measured metrics
-are reporting-only for a private Experimental Release, and a score below 94% is retained honestly.
+are reporting-only for a private Experimental Release, and a score below 95% is retained honestly.

@@ -106,7 +106,7 @@ def run_gate(
         )
         console.print(
             "[green]private Experimental Release integrity gate passed[/green]; "
-            f"target_94_met={str(quality_target_met).lower()}"
+            f"target_95_met={str(quality_target_met).lower()}"
         )
         return
     for failure in result.failures:

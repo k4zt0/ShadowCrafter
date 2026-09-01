@@ -1,0 +1,95 @@
+{
+  "files": [
+    {
+      "git_blob_id": "28df5f900b358436f0267334b3e3e9af33f917ba",
+      "path": ".gitattributes",
+      "sha256": "f4e703ea6e44bbebe53aceed2a89c11e40b88b7ae130c480c89860ab805ffc8f",
+      "size": 2307
+    },
+    {
+      "git_blob_id": "a387b9007ad5dde38c9f6a846975e143844cb43f",
+      "path": "README.md",
+      "sha256": "47db98d3ff7cde4040a9e1b2f05454ba3c7570f1fb7a7d62e1d0caf68e2b6e47",
+      "size": 6886
+    },
+    {
+      "git_blob_id": "079e7a491ce727f586faa06288708f5e1e4f1a98",
+      "path": "cti-ate.tsv",
+      "sha256": "79e5354a5c6aae0c979389786853e768201f8d129fb0f0ca5af392555f238f28",
+      "size": 461971
+    },
+    {
+      "git_blob_id": "db8f2ca4362549f7f0fff6656b4de0ca305d12a0",
+      "path": "cti-mcq.tsv",
+      "sha256": "11e0af8db2dae9706c6e79901d2390bcdf9746e8feccbd9ba10682df649bcc6a",
+      "size": 2394094
+    },
+    {
+      "git_blob_id": "8142d06bafc964041dce985a0a9b98eb17c6f81c",
+      "path": "cti-rcm-2021.tsv",
+      "sha256": "a1fc5348b4bc181778dd98055f267b584755215580dd8a18896134e2670d43d3",
+      "size": 830612
+    },
+    {
+      "git_blob_id": "6ef90780402cbf9a17dd33899416f9eeab2354bb",
+      "path": "cti-rcm.tsv",
+      "sha256": "ed7d7fa79fc912c627f96e229eaa38b3c4b6be813d834d434580be6d4703d700",
+      "size": 990921
+    },
+    {
+      "git_blob_id": "e01443aad4e0a1eddb312b7e38c7bd1913862f46",
+      "path": "cti-taa.tsv",
+      "sha256": "2f14c3209ea83bd9e7bc456e336d10a78870cfe2b9b4dc3f86ea50621d6f6321",
+      "size": 1132791
+    },
+    {
+      "git_blob_id": "555dc979df10b5776ea5ec93d8f44f0297c2d5b9",
+      "path": "cti-vsp.tsv",
+      "sha256": "43d4ceefe042236a7d0885cb8506bf6537426cf2359eddb2450dd151864a498b",
+      "size": 1803337
+    }
+  ],
+  "registry_sha256": "bdc69660611ee64db3aa5d3279e9859c81a64c08ba55bd46d0c51fe25fd09405",
+  "retrieved_at_utc": "2026-09-01T16:47:53.555403+00:00",
+  "schema_version": 2,
+  "snapshot_id": "ctibench-9237e1636ee3e168fbe5ebdcc1c571de0525e568",
+  "snapshot_sha256": "4c6362a383981b8fe6c49812c911f21a206068d41c03247de2f5e9c3b2c5b2b5",
+  "snapshot_sha256_algorithm": "sha256-canonical-json-v1(path,size,sha256)",
+  "source": {
+    "allowed_purposes": [
+      "evaluate"
+    ],
+    "id": "ctibench",
+    "license": {
+      "attribution": "CTIBench authors and cited source datasets",
+      "id": "CC-BY-NC-SA-4.0",
+      "redistribution": "terms_limited",
+      "status": "verified",
+      "url": "https://creativecommons.org/licenses/by-nc-sa/4.0/legalcode"
+    },
+    "policy_class": "eval_only",
+    "provider": "AI4Sec",
+    "repo_id": "AI4Sec/cti-bench",
+    "type": "huggingface_dataset"
+  },
+  "upstream_revision": "9237e1636ee3e168fbe5ebdcc1c571de0525e568",
+  "validation": {
+    "api_file_sizes": "passed",
+    "bounded_individual_downloads": "passed",
+    "card_license": "cc-by-nc-sa-4.0",
+    "content_identity": "git-blob-or-lfs-sha256-verified",
+    "eval_only_registry_policy": "passed",
+    "exact_path_set": "passed",
+    "public_ungated": "passed",
+    "raw_executable_binary": "absent",
+    "test_only_configs": [
+      "cti-ate",
+      "cti-mcq",
+      "cti-rcm",
+      "cti-rcm-2021",
+      "cti-taa",
+      "cti-vsp"
+    ],
+    "utf8": "passed"
+  }
+}

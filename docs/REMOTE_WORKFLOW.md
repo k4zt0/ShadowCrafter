@@ -228,8 +228,8 @@ python -m shadowcrafter.cli eval gate \
 The strict gate recomputes accuracy, balanced accuracy, and macro-F1 from frozen raw predictions,
 reports every class, and independently checks exact CTIBench contamination. It rejects legacy
 caller-supplied aggregate JSON. The current CTIBench protocol is CC-BY-NC-SA-4.0 and therefore
-permits only noncommercial reporting without sharing benchmark material. The 94% target is
-reported as `target_94_met` and is not an Experimental Release blocker. A private Experimental
+permits only noncommercial reporting without sharing benchmark material. The 95% target is
+reported as `target_95_met` and is not an Experimental Release blocker. A private Experimental
 Release still requires passing safety, privacy, license, provenance, artifact-integrity,
 operational, and remote-weight recovery reviews; public visibility is forbidden. Improvements
 may use development evidence only; obtain a new blind test if the existing test influenced
@@ -279,7 +279,7 @@ The model card is part of that inventory. Its YAML front matter must identify th
 `Experimental Release`, repository, release ID and candidate hash. It must either reproduce the
 frozen measured benchmark name/revision/hash/sample count and accuracy, balanced accuracy,
 macro-F1 and `quality_target_met`, or state `not-yet-evaluated`, use null metric values, and give
-the manifest's explicit reason. A measured result below 0.94 remains reportable and does not
+the manifest's explicit reason. A measured result below 0.95 remains reportable and does not
 block this Experimental tier. Evaluation integrity, contamination, license, privacy, safety,
 provenance, visibility and artifact failures remain blocking.
 
