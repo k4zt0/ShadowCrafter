@@ -14,6 +14,10 @@
   HTTP/TLS 블랙박스 점검 프레임 구현
 - 소스·설정·manifest·평가 증거는 로컬, 모델 weight는 승인 원격에만 두도록
   보관 정책과 동기화 스크립트 정렬
+- 승인 artifact, exact host/path, DNS·peer pinning, 요청·응답 제한을 강제하는
+  블랙박스 취약점 후보 탐지와 CLI 구현
+- HSTS/CSP/CORS/cookie/cache/method/TLS 및 bounded body signal을 증거 기반으로
+  판정하고 response body와 credential은 결과에 보존하지 않도록 검증
 
 ## 모델 경로
 
@@ -24,8 +28,8 @@
 - preflight train loss `1.772` 확인(정확도 수치가 아님)
 - LoRA-only adapter 파일 검증 완료
 - 2,017건 기준선 전체 학습 job `shadowcrafter-9b-full-1474c34-v1` 실행 중
-- 블랙박스 전용 레코드를 포함한 28,140건 확장 학습은 기준선 성공 후 자동
-  실행하도록 갱신 중
+- 블랙박스 전용 레코드를 포함한 28,140건 확장 학습 job
+  `shadowcrafter-9b-expanded-blackbox-264540a-v1`이 기준선 성공을 기다리는 중
 - 고정 외부 평가와 릴리스 게이트는 미완료
 
 ## 데이터와 평가
