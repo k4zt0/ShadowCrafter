@@ -124,6 +124,17 @@ class ObservedHeader(ContractModel):
     value: str = Field(min_length=1, max_length=2000)
 
 
+class PassiveBodySignal(ContractModel):
+    """Fixed, non-content signal derived from a bounded response body."""
+
+    signal_id: Literal[
+        "directory-listing",
+        "runtime-diagnostic-page",
+        "verbose-error-detail",
+    ]
+    matched_markers: int = Field(ge=2, le=8)
+
+
 class EvidenceRecord(ContractModel):
     """Bounded response evidence that deliberately omits response body content."""
 
@@ -136,6 +147,7 @@ class EvidenceRecord(ContractModel):
     body_prefix_sha256: str
     body_bytes_captured: int = Field(ge=0, le=65_536)
     body_truncated: bool
+    body_signals: tuple[PassiveBodySignal, ...] = ()
     elapsed_ms: float = Field(ge=0, le=10_000)
     tls: TLSMetadata | None = None
     captured_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
@@ -143,6 +155,17 @@ class EvidenceRecord(ContractModel):
     credentials_included: Literal[False] = False
 
     _valid_body_sha256 = field_validator("body_prefix_sha256")(validate_sha256)
+
+    @model_validator(mode="after")
+    def validate_body_signals(self) -> EvidenceRecord:
+        signal_ids = [signal.signal_id for signal in self.body_signals]
+        if len(signal_ids) != len(set(signal_ids)):
+            raise ValueError("passive body signals must be unique")
+        if self.method != "GET" and self.body_signals:
+            raise ValueError("only an authorized GET response may produce body signals")
+        if self.body_bytes_captured == 0 and self.body_signals:
+            raise ValueError("body signals require a captured body prefix")
+        return self
 
 
 class BlackBoxAssessmentResult(ContractModel):

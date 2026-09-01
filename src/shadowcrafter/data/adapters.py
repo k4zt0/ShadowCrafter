@@ -958,6 +958,16 @@ def _adapt_defensive_catalog_json(
         if not requirement_id or not title or not guidance or not published_at:
             stats["unsafe_skipped"] += 1
             continue
+        declared_task = _source_text(_pick(item, "task"))
+        if declared_task is None:
+            task = TaskType.SECURE_CODE_REVIEW
+            record_kind = "defensive_requirement"
+        elif declared_task == TaskType.BLACK_BOX_ASSESSMENT:
+            task = TaskType.BLACK_BOX_ASSESSMENT
+            record_kind = "blackbox_defensive_requirement"
+        else:
+            stats["invalid_skipped"] += 1
+            continue
         question = (
             f"What source-defined defensive requirement applies to {title} ({requirement_id})?"
         )
@@ -970,11 +980,11 @@ def _adapt_defensive_catalog_json(
                 record_key=requirement_id,
                 record_id=f"{source.id}:{_safe_identifier(requirement_id)}",
                 split_group=f"{source.id}:{_safe_identifier(requirement_id)}",
-                task=TaskType.SECURE_CODE_REVIEW,
+                task=task,
                 question=question,
                 answer=answer,
                 labels={
-                    "record_kind": "defensive_requirement",
+                    "record_kind": record_kind,
                     "requirement_id": requirement_id,
                     "source_human_reviewed": True,
                     "published_at": published_at,

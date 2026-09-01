@@ -2,14 +2,16 @@ import asyncio
 import hashlib
 from collections.abc import Mapping
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 
 import pytest
+from pydantic import ValidationError
 
 from shadowcrafter.blackbox.assessor import (
     AuthorizedBlackBoxAssessor,
     SlidingWindowRateLimiter,
 )
-from shadowcrafter.blackbox.authorization import AuthorizationError
+from shadowcrafter.blackbox.authorization import AuthorizationError, read_blackbox_scope
 from shadowcrafter.blackbox.models import AuthorizationArtifact, SafetyLimits, TLSMetadata
 from shadowcrafter.blackbox.network import (
     NetworkSafetyError,
@@ -41,12 +43,16 @@ class FakeTransport:
         body: bytes = b"",
         peer_ip: str | None = None,
         delay: float = 0.0,
+        tls_protocol: str = "TLSv1.3",
+        tls_cipher: str = "TLS_AES_256_GCM_SHA384",
     ) -> None:
         self.status_code = status_code
         self.headers = headers
         self.body = body
         self.peer_ip = peer_ip
         self.delay = delay
+        self.tls_protocol = tls_protocol
+        self.tls_cipher = tls_cipher
         self.calls: list[PinnedRequest] = []
         self.active = 0
         self.max_active = 0
@@ -60,8 +66,8 @@ class FakeTransport:
                 await asyncio.sleep(self.delay)
             tls = (
                 TLSMetadata(
-                    protocol="TLSv1.3",
-                    cipher="TLS_AES_256_GCM_SHA384",
+                    protocol=self.tls_protocol,
+                    cipher=self.tls_cipher,
                     certificate_sha256="c" * 64,
                     certificate_not_after=NOW + timedelta(days=90),
                 )
@@ -186,6 +192,22 @@ def test_authorization_artifact_is_required_hash_bound_and_current() -> None:
             resolver=resolver,
             transport=transport,
         )
+
+
+def test_runtime_scope_loader_rejects_duplicate_json_keys(tmp_path: Path) -> None:
+    scope, _artifact = make_scope_and_artifact()
+    scope_path = tmp_path / "scope.json"
+    scope_path.write_text(scope.model_dump_json())
+    assert read_blackbox_scope(scope_path) == scope
+
+    duplicate = scope.model_dump_json().replace(
+        '{"scope_id":',
+        '{"scope_id":"duplicate","scope_id":',
+        1,
+    )
+    scope_path.write_text(duplicate)
+    with pytest.raises(AuthorizationError, match="strict JSON"):
+        read_blackbox_scope(scope_path)
 
 
 def test_passive_observation_redacts_secrets_and_returns_typed_findings() -> None:
@@ -450,3 +472,114 @@ def test_only_get_head_options_are_accepted() -> None:
 
     with pytest.raises(ValueError, match="GET, HEAD, and OPTIONS"):
         asyncio.run(assessor.assess(("https://app.example.test/",), methods=("POST",)))
+
+
+def test_extended_blackbox_rules_are_evidence_grounded_and_non_executing() -> None:
+    scope, artifact = make_scope_and_artifact(methods=("GET", "OPTIONS"))
+    sensitive_marker = "do-not-retain-this-path"
+    transport = FakeTransport(
+        status_code=500,
+        headers=(
+            ("Strict-Transport-Security", "max-age=0"),
+            ("Content-Security-Policy-Report-Only", "script-src 'nonce-PRIVATE'"),
+            ("X-Content-Type-Options", "off"),
+            ("X-Frame-Options", "ALLOW-FROM https://legacy.example.test"),
+            ("Referrer-Policy", "unsafe-url"),
+            ("Permissions-Policy", "camera=*, geolocation=(self), microphone=()"),
+            ("Set-Cookie", "session=value; SameSite=None"),
+            ("Cache-Control", "public, max-age=60"),
+            ("Access-Control-Allow-Origin", "null"),
+            ("Access-Control-Allow-Credentials", "true"),
+            ("Allow", "GET, HEAD, OPTIONS, TRACE"),
+            ("Server", "ExampleServer/1.2.3"),
+            ("Content-Type", "text/html; charset=utf-8"),
+        ),
+        body=(
+            "Traceback (most recent call last):\n"
+            f' File \"/{sensitive_marker}/app.py\", line 7, in handler\n'
+        ).encode(),
+        tls_cipher="ECDHE-RSA-RC4-SHA",
+    )
+    assessor = make_assessor(
+        scope=scope,
+        artifact=artifact,
+        resolver=FakeResolver({"app.example.test": (PUBLIC_TEST_IP,)}),
+        transport=transport,
+    )
+
+    result = asyncio.run(
+        assessor.assess(
+            ("https://app.example.test/",),
+            methods=("GET", "OPTIONS"),
+        )
+    )
+
+    titles = {finding.title for finding in result.findings}
+    assert titles >= {
+        "Transport policy explicitly disabled",
+        "Content security policy is report-only",
+        "Invalid content type protection observed",
+        "Invalid legacy frame policy observed",
+        "Unsafe referrer disclosure policy observed",
+        "Broad browser feature policy observed",
+        "Cross-site cookie lacks Secure protection",
+        "Public caching allowed on a cookie-setting response",
+        "Null origin accepted with credentials",
+        "Technology version disclosure observed",
+        "Diagnostic or tunneling HTTP method advertised",
+        "Weak TLS cipher observed",
+        "Verbose error details observed",
+    }
+    get_evidence = next(item for item in result.evidence if item.method == "GET")
+    assert [signal.signal_id for signal in get_evidence.body_signals] == [
+        "verbose-error-detail"
+    ]
+    serialized = result.model_dump_json()
+    assert sensitive_marker not in serialized
+    assert "PRIVATE" not in serialized
+    assert not result.payloads_sent
+    assert not result.credentials_sent
+
+    invalid = get_evidence.model_dump(mode="json")
+    invalid["method"] = "HEAD"
+    with pytest.raises(ValidationError, match="authorized GET"):
+        type(get_evidence).model_validate(invalid)
+
+
+@pytest.mark.parametrize(
+    ("body", "expected_signal", "expected_title"),
+    [
+        (
+            b"<html><title>Index of /public</title><a href='../'>Parent Directory</a></html>",
+            "directory-listing",
+            "Directory listing content observed",
+        ),
+        (
+            b"<html><title>phpinfo()</title><h1>PHP Version 8</h1><p>PHP Credits</p></html>",
+            "runtime-diagnostic-page",
+            "Runtime diagnostic page observed",
+        ),
+    ],
+)
+def test_bounded_get_body_signatures_never_return_body_content(
+    body: bytes,
+    expected_signal: str,
+    expected_title: str,
+) -> None:
+    scope, artifact = make_scope_and_artifact(methods=("GET",))
+    transport = FakeTransport(
+        headers=(("Content-Type", "text/html"),),
+        body=body,
+    )
+    assessor = make_assessor(
+        scope=scope,
+        artifact=artifact,
+        resolver=FakeResolver({"app.example.test": (PUBLIC_TEST_IP,)}),
+        transport=transport,
+    )
+
+    result = asyncio.run(assessor.assess(("https://app.example.test/",), methods=("GET",)))
+
+    assert expected_signal in {item.signal_id for item in result.evidence[0].body_signals}
+    assert expected_title in {finding.title for finding in result.findings}
+    assert body.decode() not in result.model_dump_json()

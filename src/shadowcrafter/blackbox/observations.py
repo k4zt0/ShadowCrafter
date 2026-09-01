@@ -9,7 +9,12 @@ from datetime import UTC, datetime, timedelta
 from typing import Literal, cast
 from urllib.parse import urlsplit, urlunsplit
 
-from shadowcrafter.blackbox.models import EvidenceRecord, ObservedHeader, SafetyLimits
+from shadowcrafter.blackbox.models import (
+    EvidenceRecord,
+    ObservedHeader,
+    PassiveBodySignal,
+    SafetyLimits,
+)
 from shadowcrafter.blackbox.network import TransportResponse, ValidatedTarget
 from shadowcrafter.integrations.contracts import (
     BlackBoxFinding,
@@ -26,18 +31,23 @@ _CAPTURED_HEADERS = frozenset(
         "access-control-allow-methods",
         "access-control-allow-origin",
         "allow",
+        "cache-control",
         "content-security-policy",
+        "content-security-policy-report-only",
         "content-type",
         "cross-origin-embedder-policy",
         "cross-origin-opener-policy",
         "cross-origin-resource-policy",
         "location",
         "permissions-policy",
+        "pragma",
         "referrer-policy",
         "server",
         "set-cookie",
         "strict-transport-security",
         "x-content-type-options",
+        "x-aspnet-version",
+        "x-aspnetmvc-version",
         "x-frame-options",
         "x-powered-by",
     }
@@ -47,6 +57,79 @@ _COOKIE_NAME = re.compile(r"^[!#$%&'*+\-.^_`|~0-9A-Za-z]+$")
 _KEY_VALUE_SECRET = re.compile(r"(?i)\b(token|secret|password|passwd|api[-_]?key)=([^\s;,]+)")
 _AUTHORIZATION_VALUE = re.compile(r"(?i)\b(?:basic|bearer)\s+[A-Za-z0-9._~+/=-]+")
 _JWT_VALUE = re.compile(r"\beyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\b")
+_SERVER_VERSION = re.compile(r"(?i)\b[a-z][a-z0-9._-]{1,39}/v?\d+(?:\.\d+){1,5}\b")
+_HSTS_MAX_AGE = re.compile(r"(?i)(?:^|;)\s*max-age\s*=\s*([0-9]+)\s*(?:;|$)")
+_HTML_CONTENT_TYPE = re.compile(r"(?i)^(?:text/html|application/xhtml\+xml)(?:;|$)")
+
+
+def _body_signals(
+    *, method: str, status_code: int, headers: tuple[tuple[str, str], ...], body: bytes
+) -> tuple[PassiveBodySignal, ...]:
+    """Classify fixed passive signatures without retaining or returning body text."""
+
+    if method != "GET" or not body:
+        return ()
+    content_types = [
+        value.strip()
+        for name, value in headers
+        if name.strip().lower() == "content-type"
+    ]
+    if content_types and not any(
+        _HTML_CONTENT_TYPE.match(value) or value.lower().startswith("text/plain")
+        for value in content_types
+    ):
+        return ()
+
+    lowered = body.lower()
+    signals: list[PassiveBodySignal] = []
+
+    directory_markers = (
+        b"index of /",
+        b"parent directory",
+        b"<a href=",
+    )
+    directory_matches = sum(marker in lowered for marker in directory_markers)
+    if directory_matches >= 2:
+        signals.append(
+            PassiveBodySignal(
+                signal_id="directory-listing",
+                matched_markers=directory_matches,
+            )
+        )
+
+    php_markers = (b"<title>phpinfo()", b"php version", b"php credits")
+    apache_status_markers = (b"<title>apache status", b"server version:", b"server uptime:")
+    runtime_matches = max(
+        sum(marker in lowered for marker in php_markers),
+        sum(marker in lowered for marker in apache_status_markers),
+    )
+    if runtime_matches >= 2:
+        signals.append(
+            PassiveBodySignal(
+                signal_id="runtime-diagnostic-page",
+                matched_markers=runtime_matches,
+            )
+        )
+
+    traceback_markers = (
+        b"traceback (most recent call last):",
+        b"stack trace:",
+        b"server error in '/' application",
+        b"fatal error:",
+        b"exception details:",
+    )
+    detail_markers = (b' file "', b" at ", b"source file:", b"line ")
+    traceback_matches = sum(marker in lowered for marker in traceback_markers)
+    detail_matches = sum(marker in lowered for marker in detail_markers)
+    if status_code >= 400 and traceback_matches >= 1 and detail_matches >= 1:
+        signals.append(
+            PassiveBodySignal(
+                signal_id="verbose-error-detail",
+                matched_markers=min(traceback_matches + detail_matches, 8),
+            )
+        )
+
+    return tuple(signals)
 
 
 def _clean_header_text(value: str, *, limit: int = 2000) -> str:
@@ -110,7 +193,7 @@ def redact_response_headers(headers: tuple[tuple[str, str], ...]) -> tuple[Obser
             value = _redact_cookie(raw_value)
         elif name == "location":
             value = _redact_location(raw_value)
-        elif name == "content-security-policy":
+        elif name in {"content-security-policy", "content-security-policy-report-only"}:
             value = _CSP_SECRET.sub("nonce-or-hash-[redacted]", _clean_header_text(raw_value))
         else:
             value = _clean_header_text(raw_value)
@@ -154,6 +237,12 @@ def build_evidence_record(
         body_prefix_sha256=hashlib.sha256(body_prefix).hexdigest(),
         body_bytes_captured=len(body_prefix),
         body_truncated=body_truncated,
+        body_signals=_body_signals(
+            method=method,
+            status_code=response.status_code,
+            headers=response.headers,
+            body=body_prefix,
+        ),
         elapsed_ms=response.elapsed_ms,
         tls=response.tls,
         captured_at=captured_at or datetime.now(UTC),
@@ -267,6 +356,42 @@ def derive_passive_findings(
             "Review deployment requirements and add a bounded transport policy when appropriate.",
             ("CWE-319",),
         )
+    else:
+        hsts_values = headers["strict-transport-security"]
+        max_ages = [_HSTS_MAX_AGE.search(value) for value in hsts_values]
+        max_age_match = max_ages[0] if len(max_ages) == 1 else None
+        if len(hsts_values) != 1 or max_age_match is None:
+            add(
+                "invalid-hsts",
+                "Invalid transport policy header observed",
+                "The HTTPS response contained an ambiguous or malformed HSTS policy.",
+                Severity.LOW,
+                Confidence.HIGH,
+                "Emit one valid Strict-Transport-Security header with a reviewed max-age.",
+                ("CWE-319",),
+            )
+        else:
+            max_age = int(max_age_match.group(1))
+            if max_age == 0:
+                add(
+                    "disabled-hsts",
+                    "Transport policy explicitly disabled",
+                    "The HTTPS response set the HSTS max-age directive to zero.",
+                    Severity.MEDIUM,
+                    Confidence.HIGH,
+                    "Deploy a positive HSTS max-age after validating HTTPS coverage.",
+                    ("CWE-319",),
+                )
+            elif max_age < 15_552_000:
+                add(
+                    "short-hsts",
+                    "Short transport policy lifetime observed",
+                    "The HSTS max-age was shorter than the six-month review baseline.",
+                    Severity.LOW,
+                    Confidence.MEDIUM,
+                    "Review and increase the HSTS lifetime after validating HTTPS coverage.",
+                    ("CWE-319",),
+                )
 
     if "content-security-policy" not in headers:
         add(
@@ -281,6 +406,31 @@ def derive_passive_findings(
             "For browser-rendered content, define and test a restrictive content security policy.",
             ("CWE-693",),
         )
+        if "content-security-policy-report-only" in headers:
+            add(
+                "csp-report-only",
+                "Content security policy is report-only",
+                "A report-only CSP was observed without an enforcing CSP header.",
+                Severity.LOW,
+                Confidence.HIGH,
+                "Validate the report-only policy and deploy an enforcing policy when ready.",
+                ("CWE-693",),
+            )
+    elif len(headers["content-security-policy"]) == 1:
+        policy = headers["content-security-policy"][0].lower()
+        unsafe_tokens = sorted(
+            token for token in ("'unsafe-eval'", "'unsafe-inline'") if token in policy
+        )
+        if unsafe_tokens:
+            add(
+                "weak-csp-script-policy",
+                "Weak script restriction in content policy observed",
+                "The enforcing CSP contained an unsafe script execution keyword.",
+                Severity.LOW,
+                Confidence.MEDIUM,
+                "Replace unsafe script allowances with reviewed nonces, hashes, or external files.",
+                ("CWE-693",),
+            )
     if "x-content-type-options" not in headers:
         add(
             "missing-nosniff",
@@ -292,6 +442,16 @@ def derive_passive_findings(
                 "Set an explicit content type and enable nosniff protection where browser "
                 "clients consume the response."
             ),
+            ("CWE-693",),
+        )
+    elif any(value.strip().lower() != "nosniff" for value in headers["x-content-type-options"]):
+        add(
+            "invalid-nosniff",
+            "Invalid content type protection observed",
+            "X-Content-Type-Options was present but did not contain the nosniff directive.",
+            Severity.LOW,
+            Confidence.HIGH,
+            "Set X-Content-Type-Options to the single value nosniff.",
             ("CWE-693",),
         )
     policy_values = " ".join(headers.get("content-security-policy", ())).lower()
@@ -307,6 +467,48 @@ def derive_passive_findings(
             Confidence.LOW,
             "For browser-rendered pages, define an explicit frame embedding policy.",
             ("CWE-1021",),
+        )
+    elif "x-frame-options" in headers and any(
+        value.strip().upper() not in {"DENY", "SAMEORIGIN"}
+        for value in headers["x-frame-options"]
+    ):
+        add(
+            "invalid-frame-policy",
+            "Invalid legacy frame policy observed",
+            "X-Frame-Options contained a value that modern browsers do not consistently enforce.",
+            Severity.LOW,
+            Confidence.HIGH,
+            "Use DENY or SAMEORIGIN and prefer a CSP frame-ancestors directive.",
+            ("CWE-1021",),
+        )
+
+    referrer_values = {value.strip().lower() for value in headers.get("referrer-policy", ())}
+    if "unsafe-url" in referrer_values:
+        add(
+            "unsafe-referrer-policy",
+            "Unsafe referrer disclosure policy observed",
+            "The response selected unsafe-url, which can disclose full paths to other origins.",
+            Severity.LOW,
+            Confidence.HIGH,
+            "Use a restrictive referrer policy compatible with application requirements.",
+            ("CWE-200",),
+        )
+
+    permissions = " ".join(headers.get("permissions-policy", ())).lower()
+    exposed_features = tuple(
+        feature
+        for feature in ("camera", "geolocation", "microphone")
+        if re.search(rf"(?:^|,)\s*{feature}\s*=\s*\*", permissions)
+    )
+    if exposed_features:
+        add(
+            "broad-permissions-policy",
+            "Broad browser feature policy observed",
+            "A sensitive browser feature was allowed for every origin by Permissions-Policy.",
+            Severity.LOW,
+            Confidence.MEDIUM,
+            "Restrict sensitive browser features to the minimum required origin set.",
+            ("CWE-284",),
         )
 
     cookie_headers = headers.get("set-cookie", ())
@@ -360,6 +562,37 @@ def derive_passive_findings(
                 "Set a SameSite policy appropriate for the application's cross-site requirements.",
                 ("CWE-1275",),
             )
+        same_site_none_without_secure = any(
+            "samesite=none" in value.lower()
+            and "secure" not in {
+                part.partition("=")[0].strip().lower()
+                for part in value.split(";")[1:]
+                if part.strip()
+            }
+            for value in cookie_headers
+        )
+        if same_site_none_without_secure:
+            add(
+                "cookie-samesite-none-without-secure",
+                "Cross-site cookie lacks Secure protection",
+                "A cookie declared SameSite=None without also declaring the Secure attribute.",
+                Severity.MEDIUM,
+                Confidence.HIGH,
+                "Pair SameSite=None with Secure or choose a more restrictive SameSite policy.",
+                ("CWE-614",),
+            )
+
+        cache_values = " ".join(headers.get("cache-control", ())).lower()
+        if re.search(r"(?:^|,)\s*public(?:\s|,|$)", cache_values):
+            add(
+                "public-cache-with-cookie",
+                "Public caching allowed on a cookie-setting response",
+                "The response both set a cookie and explicitly allowed public caching.",
+                Severity.MEDIUM,
+                Confidence.MEDIUM,
+                "Prevent shared caching of responses that establish or carry user state.",
+                ("CWE-525",),
+            )
 
     origins = {value.strip().lower() for value in headers.get("access-control-allow-origin", ())}
     credentials = {
@@ -394,8 +627,27 @@ def derive_passive_findings(
                 ),
                 ("CWE-942",),
             )
+    if "null" in origins and "true" in credentials:
+        add(
+            "cors-null-credentials",
+            "Null origin accepted with credentials",
+            "The response allowed the null origin together with credentialed cross-origin access.",
+            Severity.MEDIUM,
+            Confidence.MEDIUM,
+            (
+                "Use an exact trusted-origin allowlist and reject the null origin for "
+                "credentialed data."
+            ),
+            ("CWE-942",),
+        )
 
-    if "server" in headers or "x-powered-by" in headers:
+    technology_headers = (
+        headers.get("server", ())
+        + headers.get("x-powered-by", ())
+        + headers.get("x-aspnet-version", ())
+        + headers.get("x-aspnetmvc-version", ())
+    )
+    if technology_headers:
         add(
             "technology-disclosure",
             "Technology identification header observed",
@@ -408,6 +660,19 @@ def derive_passive_findings(
             "Minimize unnecessary product and version disclosure at the application boundary.",
             ("CWE-200",),
         )
+        if any(_SERVER_VERSION.search(value) for value in technology_headers):
+            add(
+                "technology-version-disclosure",
+                "Technology version disclosure observed",
+                "A response header exposed a product identifier with a specific version.",
+                Severity.LOW,
+                Confidence.HIGH,
+                (
+                    "Remove unnecessary version details and correlate the inventory with a "
+                    "pinned CVE database."
+                ),
+                ("CWE-200",),
+            )
 
     if record.method == "OPTIONS":
         advertised = ",".join(
@@ -429,6 +694,16 @@ def derive_passive_findings(
                     "Confirm that advertised methods require appropriate authentication, "
                     "authorization, and request validation."
                 ),
+                ("CWE-749",),
+            )
+        if methods & {"CONNECT", "TRACE"}:
+            add(
+                "advertised-diagnostic-or-tunnel-method",
+                "Diagnostic or tunneling HTTP method advertised",
+                "The OPTIONS response advertised TRACE or CONNECT; neither method was invoked.",
+                Severity.MEDIUM,
+                Confidence.MEDIUM,
+                "Disable unnecessary TRACE and CONNECT handling at every application boundary.",
                 ("CWE-749",),
             )
 
@@ -474,6 +749,17 @@ def derive_passive_findings(
                 "Disable legacy protocol versions and require a currently supported TLS baseline.",
                 ("CWE-326",),
             )
+        cipher = (record.tls.cipher or "").upper()
+        if any(token in cipher for token in ("3DES", "RC4", "_DES_", "NULL", "EXPORT")):
+            add(
+                "weak-tls-cipher",
+                "Weak TLS cipher observed",
+                "The negotiated TLS cipher matched a legacy or non-confidential cipher family.",
+                Severity.MEDIUM,
+                Confidence.HIGH,
+                "Remove legacy cipher suites and require modern authenticated encryption.",
+                ("CWE-327",),
+            )
         current = now or datetime.now(UTC)
         not_after = record.tls.certificate_not_after
         if not_after is not None and not_after <= current + timedelta(days=30):
@@ -489,5 +775,43 @@ def derive_passive_findings(
                 ),
                 ("CWE-324",),
             )
+
+    signal_ids = {signal.signal_id for signal in record.body_signals}
+    if "directory-listing" in signal_ids:
+        add(
+            "directory-listing",
+            "Directory listing content observed",
+            (
+                "The bounded GET response matched multiple directory-index markers; "
+                "no links were followed."
+            ),
+            Severity.MEDIUM,
+            Confidence.HIGH,
+            "Disable directory listing and expose only explicitly intended resources.",
+            ("CWE-548",),
+        )
+    if "runtime-diagnostic-page" in signal_ids:
+        add(
+            "runtime-diagnostic-page",
+            "Runtime diagnostic page observed",
+            "The bounded GET response matched multiple runtime diagnostic markers.",
+            Severity.MEDIUM,
+            Confidence.HIGH,
+            (
+                "Remove public diagnostic pages and retain diagnostic details in "
+                "access-controlled telemetry."
+            ),
+            ("CWE-200",),
+        )
+    if "verbose-error-detail" in signal_ids:
+        add(
+            "verbose-error-detail",
+            "Verbose error details observed",
+            "An error response matched both exception and source-location markers.",
+            Severity.MEDIUM,
+            Confidence.HIGH,
+            "Return generic client errors and keep stack details in access-controlled logs.",
+            ("CWE-209",),
+        )
 
     return tuple(findings)

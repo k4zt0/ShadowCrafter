@@ -1,0 +1,275 @@
+{
+  "catalog_id": "shadowcrafter-blackbox-passive-controls-v1",
+  "requirements": [
+    {
+      "id": "SC-BB-001",
+      "title": "Explicit authorization boundary",
+      "requirement": "Run black-box assessment only when an immutable owner approval exactly identifies the host, path, safe HTTP methods, validity window, and request limits. Never let model output widen that scope.",
+      "task": "black_box_assessment",
+      "published_at": "2026-09-01T00:00:00Z",
+      "model_generated": false,
+      "human_reviewed": true
+    },
+    {
+      "id": "SC-BB-002",
+      "title": "Passive request safety",
+      "requirement": "Limit routine external observation to approved bodyless GET, HEAD, and OPTIONS requests without credentials, request bodies, arbitrary headers, redirect following, brute force, denial of service, or state changes.",
+      "task": "black_box_assessment",
+      "published_at": "2026-09-01T00:00:00Z",
+      "model_generated": false,
+      "human_reviewed": true
+    },
+    {
+      "id": "SC-BB-003",
+      "title": "DNS and peer binding",
+      "requirement": "Resolve every approved hostname through a bounded resolver, reject unsafe mixed address sets, connect only to the selected address, verify the original TLS hostname, and reject a peer address that differs from the pin.",
+      "task": "black_box_assessment",
+      "published_at": "2026-09-01T00:00:00Z",
+      "model_generated": false,
+      "human_reviewed": true
+    },
+    {
+      "id": "SC-BB-004",
+      "title": "Cleartext transport",
+      "requirement": "Treat an authorized HTTP endpoint as a candidate CWE-319 transport weakness. Recommend authenticated HTTPS while noting that no redirect or exploit validation was performed.",
+      "task": "black_box_assessment",
+      "published_at": "2026-09-01T00:00:00Z",
+      "model_generated": false,
+      "human_reviewed": true
+    },
+    {
+      "id": "SC-BB-005",
+      "title": "HSTS assessment",
+      "requirement": "For an HTTPS response, distinguish a missing HSTS header from malformed, duplicate, zero, or unusually short max-age policies. Report the observed form conservatively and validate HTTPS coverage before recommending a longer lifetime.",
+      "task": "black_box_assessment",
+      "published_at": "2026-09-01T00:00:00Z",
+      "model_generated": false,
+      "human_reviewed": true
+    },
+    {
+      "id": "SC-BB-006",
+      "title": "Content security policy coverage",
+      "requirement": "For browser-rendered content, report a missing enforcing content security policy as a low-confidence configuration candidate. A report-only policy is evidence of monitoring, not enforcement.",
+      "task": "black_box_assessment",
+      "published_at": "2026-09-01T00:00:00Z",
+      "model_generated": false,
+      "human_reviewed": true
+    },
+    {
+      "id": "SC-BB-007",
+      "title": "Weak CSP script restriction",
+      "requirement": "When one enforcing content security policy explicitly permits unsafe inline or evaluated script, report a CWE-693 hardening candidate and recommend reviewed nonces, hashes, or external script files. Do not claim that cross-site scripting was proven.",
+      "task": "black_box_assessment",
+      "published_at": "2026-09-01T00:00:00Z",
+      "model_generated": false,
+      "human_reviewed": true
+    },
+    {
+      "id": "SC-BB-008",
+      "title": "Content type sniffing protection",
+      "requirement": "Differentiate a missing X-Content-Type-Options header from a present but invalid value. Recommend the single nosniff directive and an explicit content type without claiming content execution.",
+      "task": "black_box_assessment",
+      "published_at": "2026-09-01T00:00:00Z",
+      "model_generated": false,
+      "human_reviewed": true
+    },
+    {
+      "id": "SC-BB-009",
+      "title": "Frame embedding policy",
+      "requirement": "For browser pages, accept DENY or SAMEORIGIN as recognized X-Frame-Options values and also consider CSP frame-ancestors. Treat missing or obsolete values as CWE-1021 candidates whose applicability needs human review.",
+      "task": "black_box_assessment",
+      "published_at": "2026-09-01T00:00:00Z",
+      "model_generated": false,
+      "human_reviewed": true
+    },
+    {
+      "id": "SC-BB-010",
+      "title": "Referrer disclosure policy",
+      "requirement": "Report the unsafe-url referrer policy as a CWE-200 disclosure candidate because full paths may be sent to other origins. Recommend a restrictive policy compatible with application requirements.",
+      "task": "black_box_assessment",
+      "published_at": "2026-09-01T00:00:00Z",
+      "model_generated": false,
+      "human_reviewed": true
+    },
+    {
+      "id": "SC-BB-011",
+      "title": "Browser feature permissions",
+      "requirement": "Treat a Permissions-Policy that grants camera, microphone, or geolocation to every origin as a low-severity CWE-284 candidate. Recommend the minimum trusted origin set and do not claim device access occurred.",
+      "task": "black_box_assessment",
+      "published_at": "2026-09-01T00:00:00Z",
+      "model_generated": false,
+      "human_reviewed": true
+    },
+    {
+      "id": "SC-BB-012",
+      "title": "Secure cookie transport",
+      "requirement": "On HTTPS, report an observed cookie without Secure as a CWE-614 candidate. Redact every cookie value and avoid assuming the cookie carries a session unless independent evidence establishes that fact.",
+      "task": "black_box_assessment",
+      "published_at": "2026-09-01T00:00:00Z",
+      "model_generated": false,
+      "human_reviewed": true
+    },
+    {
+      "id": "SC-BB-013",
+      "title": "HttpOnly cookie protection",
+      "requirement": "Report an observed cookie without HttpOnly as a low-severity CWE-1004 candidate while acknowledging that some cookies legitimately require script access. Never retain the cookie value.",
+      "task": "black_box_assessment",
+      "published_at": "2026-09-01T00:00:00Z",
+      "model_generated": false,
+      "human_reviewed": true
+    },
+    {
+      "id": "SC-BB-014",
+      "title": "SameSite cookie policy",
+      "requirement": "Report a missing SameSite attribute as a context-dependent CWE-1275 candidate. If SameSite=None is declared without Secure, report the stronger cross-site cookie transport inconsistency.",
+      "task": "black_box_assessment",
+      "published_at": "2026-09-01T00:00:00Z",
+      "model_generated": false,
+      "human_reviewed": true
+    },
+    {
+      "id": "SC-BB-015",
+      "title": "Shared caching with cookies",
+      "requirement": "When one response both sets a cookie and explicitly permits public caching, report a CWE-525 candidate. Recommend preventing shared caching of user-state responses while avoiding claims about cached private data not observed.",
+      "task": "black_box_assessment",
+      "published_at": "2026-09-01T00:00:00Z",
+      "model_generated": false,
+      "human_reviewed": true
+    },
+    {
+      "id": "SC-BB-016",
+      "title": "Wildcard cross-origin policy",
+      "requirement": "Treat Access-Control-Allow-Origin set to a wildcard as a context-dependent CWE-942 candidate. Public resources may intentionally use it, so confirm the endpoint data classification before assigning impact.",
+      "task": "black_box_assessment",
+      "published_at": "2026-09-01T00:00:00Z",
+      "model_generated": false,
+      "human_reviewed": true
+    },
+    {
+      "id": "SC-BB-017",
+      "title": "Credentialed CORS inconsistency",
+      "requirement": "Report wildcard or null origin policies combined with credential allowance as CORS configuration candidates. Explain that browser enforcement and endpoint intent still require validation and that no credential was sent.",
+      "task": "black_box_assessment",
+      "published_at": "2026-09-01T00:00:00Z",
+      "model_generated": false,
+      "human_reviewed": true
+    },
+    {
+      "id": "SC-BB-018",
+      "title": "Technology fingerprint disclosure",
+      "requirement": "Report Server, X-Powered-By, and framework version headers as CWE-200 inventory exposure. Do not assign a CVE from a banner alone; correlate an exact version with a separately pinned vulnerability database and preserve uncertainty.",
+      "task": "black_box_assessment",
+      "published_at": "2026-09-01T00:00:00Z",
+      "model_generated": false,
+      "human_reviewed": true
+    },
+    {
+      "id": "SC-BB-019",
+      "title": "Advertised HTTP methods",
+      "requirement": "An OPTIONS response can document additional methods without proving they are usable. Report state-changing methods as informational and elevate TRACE or CONNECT as configuration candidates, but never invoke them during the passive profile.",
+      "task": "black_box_assessment",
+      "published_at": "2026-09-01T00:00:00Z",
+      "model_generated": false,
+      "human_reviewed": true
+    },
+    {
+      "id": "SC-BB-020",
+      "title": "Redirect boundary",
+      "requirement": "Record an HTTP redirect without following it, remove query and fragment data from evidence, and identify whether its host is outside the exact authorization allowlist. A redirect alone does not prove an open redirect vulnerability.",
+      "task": "black_box_assessment",
+      "published_at": "2026-09-01T00:00:00Z",
+      "model_generated": false,
+      "human_reviewed": true
+    },
+    {
+      "id": "SC-BB-021",
+      "title": "Legacy TLS protocol",
+      "requirement": "Report a negotiated SSL or TLS protocol older than TLS 1.2 as a high-confidence CWE-326 configuration candidate and recommend a currently supported protocol baseline.",
+      "task": "black_box_assessment",
+      "published_at": "2026-09-01T00:00:00Z",
+      "model_generated": false,
+      "human_reviewed": true
+    },
+    {
+      "id": "SC-BB-022",
+      "title": "Weak TLS cipher",
+      "requirement": "Report a negotiated RC4, DES, 3DES, NULL, or export cipher family as a high-confidence CWE-327 candidate. Recommend modern authenticated encryption without testing additional cipher suites aggressively.",
+      "task": "black_box_assessment",
+      "published_at": "2026-09-01T00:00:00Z",
+      "model_generated": false,
+      "human_reviewed": true
+    },
+    {
+      "id": "SC-BB-023",
+      "title": "Certificate expiry",
+      "requirement": "Report a verified TLS certificate whose expiry is within thirty days as an operational security candidate. Include only the fingerprint and expiry metadata, not certificate contents.",
+      "task": "black_box_assessment",
+      "published_at": "2026-09-01T00:00:00Z",
+      "model_generated": false,
+      "human_reviewed": true
+    },
+    {
+      "id": "SC-BB-024",
+      "title": "Directory listing evidence",
+      "requirement": "A bounded authorized GET response that matches multiple directory-index markers supports a CWE-548 candidate. Do not follow listed links, enumerate files, or retain the response body.",
+      "task": "black_box_assessment",
+      "published_at": "2026-09-01T00:00:00Z",
+      "model_generated": false,
+      "human_reviewed": true
+    },
+    {
+      "id": "SC-BB-025",
+      "title": "Runtime diagnostic exposure",
+      "requirement": "A bounded authorized GET response matching multiple runtime diagnostic markers supports a CWE-200 candidate. Record only fixed signal identifiers and the body hash, then recommend access-controlled diagnostics.",
+      "task": "black_box_assessment",
+      "published_at": "2026-09-01T00:00:00Z",
+      "model_generated": false,
+      "human_reviewed": true
+    },
+    {
+      "id": "SC-BB-026",
+      "title": "Verbose error disclosure",
+      "requirement": "An error response that contains both exception and source-location markers supports a high-confidence CWE-209 candidate. Do not include stack text, source paths, secrets, or response body content in the report.",
+      "task": "black_box_assessment",
+      "published_at": "2026-09-01T00:00:00Z",
+      "model_generated": false,
+      "human_reviewed": true
+    },
+    {
+      "id": "SC-BB-027",
+      "title": "Bounded evidence retention",
+      "requirement": "Retain only allowlisted and redacted headers, TLS metadata, response status, peer address, timing, bounded body length, truncation state, fixed body signal identifiers, and a SHA-256 body-prefix digest. Never retain response body text or credentials.",
+      "task": "black_box_assessment",
+      "published_at": "2026-09-01T00:00:00Z",
+      "model_generated": false,
+      "human_reviewed": true
+    },
+    {
+      "id": "SC-BB-028",
+      "title": "Conservative severity and confidence",
+      "requirement": "Separate direct observations from inferred impact. Missing hardening headers are usually low severity or low confidence, while directly negotiated legacy cryptography and explicit insecure cookie attributes can carry higher confidence.",
+      "task": "black_box_assessment",
+      "published_at": "2026-09-01T00:00:00Z",
+      "model_generated": false,
+      "human_reviewed": true
+    },
+    {
+      "id": "SC-BB-029",
+      "title": "CVE correlation discipline",
+      "requirement": "Never infer a CVE solely from a product banner, generic error page, or missing header. Require an exact normalized product and version plus a separately pinned CVE record, and label the result as a candidate until a human validates applicability.",
+      "task": "black_box_assessment",
+      "published_at": "2026-09-01T00:00:00Z",
+      "model_generated": false,
+      "human_reviewed": true
+    },
+    {
+      "id": "SC-BB-030",
+      "title": "Human-reviewed black-box report",
+      "requirement": "Every report must identify the authorized scope, exact target and method, redacted evidence reference, observation, candidate CWE or CVE, severity, confidence, remediation, limitations, and the fact that no exploit was attempted. Human review is mandatory.",
+      "task": "black_box_assessment",
+      "published_at": "2026-09-01T00:00:00Z",
+      "model_generated": false,
+      "human_reviewed": true
+    }
+  ]
+}

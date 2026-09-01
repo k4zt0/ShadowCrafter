@@ -12,6 +12,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class TaskType(StrEnum):
+    BLACK_BOX_ASSESSMENT = "black_box_assessment"
     CVE_TRIAGE = "cve_triage"
     CWE_MAPPING = "cwe_mapping"
     MALWARE_ANALYSIS = "malware_analysis"

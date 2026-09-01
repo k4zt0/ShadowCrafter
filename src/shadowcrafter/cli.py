@@ -20,12 +20,14 @@ eval_app = typer.Typer(help="Evaluation and release gates")
 data_app = typer.Typer(help="Dataset and source snapshot utilities")
 train_app = typer.Typer(help="Model training")
 release_app = typer.Typer(help="Private Experimental Release publication")
+assess_app = typer.Typer(help="Authorized evidence-grounded vulnerability assessment")
 app.add_typer(config_app, name="config")
 app.add_typer(knowledge_app, name="knowledge")
 app.add_typer(eval_app, name="eval")
 app.add_typer(data_app, name="data")
 app.add_typer(train_app, name="train")
 app.add_typer(release_app, name="release")
+app.add_typer(assess_app, name="assess")
 console = Console()
 
 
@@ -48,6 +50,45 @@ def init_knowledge(path: Path = Path("artifacts/knowledge/shadowcrafter.db")) ->
 @knowledge_app.command("search")
 def search_knowledge(query: str, path: Path = Path("artifacts/knowledge/shadowcrafter.db")) -> None:
     console.print_json(json.dumps(search(path, query), ensure_ascii=False))
+
+
+@assess_app.command("blackbox")
+def assess_blackbox(
+    scope: Annotated[Path, typer.Option("--scope")],
+    authorization: Annotated[Path, typer.Option("--authorization")],
+    target: Annotated[list[str], typer.Option("--target")],
+    output: Annotated[Path, typer.Option("--output")],
+    method: Annotated[list[str] | None, typer.Option("--method")] = None,
+) -> None:
+    """Run a passive assessment against exact URLs authorized by a hash-bound scope."""
+
+    from shadowcrafter.blackbox import (
+        AuthorizationError,
+        NetworkSafetyError,
+        read_blackbox_scope,
+        run_authorized_assessment,
+    )
+
+    try:
+        runtime_scope = read_blackbox_scope(scope)
+        result = run_authorized_assessment(
+            scope=runtime_scope,
+            authorization_artifact=authorization,
+            targets=tuple(target),
+            methods=tuple(method or ("HEAD",)),
+        )
+        content = result.model_dump_json(indent=2).encode("utf-8") + b"\n"
+        output.parent.mkdir(parents=True, exist_ok=True)
+        with output.open("xb") as handle:
+            handle.write(content)
+        output.chmod(0o600)
+    except (AuthorizationError, NetworkSafetyError, OSError, ValueError):
+        console.print("[red]black-box assessment failed closed[/red]; details withheld")
+        raise typer.Exit(code=1) from None
+    console.print(
+        f"[green]assessment completed[/green] findings={len(result.findings)} "
+        f"evidence={len(result.evidence)} output={output}"
+    )
 
 
 @eval_app.command("gate")

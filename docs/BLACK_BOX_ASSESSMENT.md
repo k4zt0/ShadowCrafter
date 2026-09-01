@@ -1,6 +1,11 @@
 # 승인형 블랙박스 점검
 
-ShadowCrafter의 블랙박스 하위 시스템은 소유자 승인을 받은 HTTP/TLS 자산의 **수동적 구성 관찰**만 수행합니다. 취약점 exploit, payload 전송, 자격 증명 사용·검증, brute force, 서비스 거부, 상태 변경, 리디렉션 추적은 구현하지 않습니다. 결과는 확정 판정이 아니라 증거가 연결된 후보이며 항상 사람이 검토해야 합니다.
+ShadowCrafter의 블랙박스 하위 시스템은 소유자 승인을 받은 HTTP/TLS 자산의
+**수동적 취약점 후보 탐지**를 수행합니다. 소스가 없어도 외부 응답에서 확인 가능한
+전송·브라우저·쿠키·캐시·CORS·정보 노출 문제를 탐지하지만, 취약점 exploit,
+payload 전송, 자격 증명 사용·검증, brute force, 서비스 거부, 상태 변경,
+리디렉션 추적은 구현하지 않습니다. 결과는 확정 판정이 아니라 증거가 연결된
+후보이며 항상 사람이 검토해야 합니다.
 
 ## 승인 문서
 
@@ -48,20 +53,49 @@ ShadowCrafter의 블랙박스 하위 시스템은 소유자 승인을 받은 HTT
 
 - TLS protocol, cipher, 인증서 fingerprint와 만료 시점
 - HSTS, CSP, frame policy, content type 보호, referrer 및 cross-origin policy header
-- 쿠키의 `Secure`, `HttpOnly`, `SameSite` 속성 유무
-- CORS wildcard/credential 조합
-- `Server`와 `X-Powered-By` 노출
-- 수동 `OPTIONS` 응답이 광고한 메서드
+- HSTS의 malformed/zero/짧은 lifetime과 CSP report-only/unsafe script 정책
+- 쿠키의 `Secure`, `HttpOnly`, `SameSite` 속성 및 cookie-setting 응답의 public cache
+- CORS wildcard/null origin과 credential 조합
+- `Server`, `X-Powered-By`, ASP.NET 제품·버전 노출
+- 수동 `OPTIONS` 응답이 광고한 상태 변경 메서드와 `TRACE`/`CONNECT`
 - 따라가지 않은 redirect가 승인 host scope 안인지 여부
+- legacy TLS protocol, 약한 cipher와 30일 이내 인증서 만료
+- 승인된 bounded `GET`에서 directory listing, runtime diagnostic page, verbose error의
+  복수 고정 signature
 
-응답 body는 결과에 포함하지 않습니다. 제한된 prefix의 바이트 수, SHA-256, truncation 여부만 기록합니다. `Set-Cookie` 값, CSP nonce/hash, redirect query/fragment, 비허용 header는 evidence 생성 전에 삭제합니다. 각 `BlackBoxFinding`은 `EvidenceReference`를 통해 redacted evidence의 canonical SHA-256과 연결됩니다.
+응답 body는 결과에 포함하지 않습니다. 제한된 prefix의 바이트 수, SHA-256,
+truncation 여부와 고정된 body signal ID만 기록합니다. `Set-Cookie` 값, CSP nonce/hash,
+redirect query/fragment, 비허용 header는 evidence 생성 전에 삭제합니다. 각
+`BlackBoxFinding`은 `EvidenceReference`를 통해 redacted evidence의 canonical
+SHA-256과 연결됩니다. 제품 banner만으로 CVE를 단정하지 않으며, 정확한 제품·버전과
+별도로 고정된 CVE 데이터베이스가 있을 때만 후보로 상관 분석합니다.
 
 ## 라이브러리 경계
 
 broker는 `shadowcrafter.blackbox.assess_authorized_targets`(async) 또는 `run_authorized_assessment`(sync)에 검증된 `BlackBoxScope`, 승인 파일 바이트, exact URL 목록을 전달합니다. 기본 메서드는 `HEAD` 하나입니다. 이미 event loop가 있는 서비스는 async entry point만 사용해야 합니다.
 
+CLI에서는 승인 파일과 별도의 runtime scope JSON을 전달하고, 결과를 새 private
+파일로만 생성합니다. `--target`과 `--method`는 여러 번 지정할 수 있으며 기본
+메서드는 `HEAD`입니다. body signature 탐지가 필요하면 승인 문서와 scope 양쪽에
+`GET`이 포함되어 있어야 합니다.
+
+```bash
+shadowcrafter assess blackbox \
+  --scope /secure/scope.json \
+  --authorization /secure/authorization.json \
+  --target https://app.example.test/ \
+  --method GET \
+  --method OPTIONS \
+  --output reports/private/app-assessment.json
+```
+
+명령은 기존 output을 덮어쓰지 않으며 결과 파일 권한을 `0600`으로 설정합니다.
+
 실제 배포에서는 호출자 인증, tenant별 scope 저장소, 승인 파일 vault, append-only 감사 로그, emergency stop을 이 라이브러리 바깥의 broker에서도 강제해야 합니다. 모델 출력으로 scope, 승인 파일, 대상 URL 또는 제한 값을 자동 생성하거나 확대해서는 안 됩니다.
 
 ## 검증
 
-`tests/test_blackbox.py`는 실제 네트워크를 사용하지 않고 모의 resolver와 transport만 사용합니다. 승인 hash/기간, exact host/path, query 거부, private-address와 혼합 DNS, peer 변경, redirect 차단, body/header/request 제한, redaction, concurrency와 rate limit을 회귀 검증합니다.
+`tests/test_blackbox.py`는 실제 네트워크를 사용하지 않고 모의 resolver와 transport만
+사용합니다. 승인 hash/기간, exact host/path, query 거부, private-address와 혼합 DNS,
+peer 변경, redirect 차단, body/header/request 제한, redaction, concurrency와 rate
+limit뿐 아니라 확장 header/TLS/body signature와 body 비보존도 회귀 검증합니다.

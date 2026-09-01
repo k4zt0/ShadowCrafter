@@ -500,6 +500,24 @@ def test_defensive_catalog_adapter_supports_reviewed_owasp_style_shape(tmp_path:
                     "model_generated": True,
                     "human_reviewed": False,
                 },
+                {
+                    "id": "REQ-BLACKBOX",
+                    "title": "Passive evidence",
+                    "requirement": "Retain redacted response metadata and require human review.",
+                    "task": "black_box_assessment",
+                    "published_at": "2025-01-01T00:00:00Z",
+                    "model_generated": False,
+                    "human_reviewed": True,
+                },
+                {
+                    "id": "REQ-UNKNOWN-TASK",
+                    "title": "Unknown task",
+                    "requirement": "This item must not enter the canonical corpus.",
+                    "task": "unsupported_task",
+                    "published_at": "2025-01-01T00:00:00Z",
+                    "model_generated": False,
+                    "human_reviewed": True,
+                },
             ]
         },
     )
@@ -512,12 +530,16 @@ def test_defensive_catalog_adapter_supports_reviewed_owasp_style_shape(tmp_path:
         registry_path=REGISTRY,
         adapter=AdapterKind.DEFENSIVE_CATALOG_JSON,
     )
-    record = _read_records(output_path)[0]
+    records = _read_records(output_path)
+    record = next(item for item in records if item.record_id.endswith("REQ-1"))
     assert record.messages[-1].content == (
         "Session invalidation (REQ-1): Invalidate server-side sessions after credential rotation."
     )
     assert record.labels["generation_method"] == "deterministic_source_template"
-    assert manifest["statistics"]["invalid_skipped"] == 1
+    blackbox = next(item for item in records if item.record_id.endswith("REQ-BLACKBOX"))
+    assert blackbox.task == TaskType.BLACK_BOX_ASSESSMENT
+    assert blackbox.labels["record_kind"] == "blackbox_defensive_requirement"
+    assert manifest["statistics"]["invalid_skipped"] == 2
 
 
 def test_splunk_adapter_emits_only_production_detections(tmp_path: Path) -> None:

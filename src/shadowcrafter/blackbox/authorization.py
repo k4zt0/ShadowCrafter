@@ -14,6 +14,7 @@ from shadowcrafter.blackbox.models import AuthorizationArtifact
 from shadowcrafter.integrations.contracts import BlackBoxScope
 
 MAX_AUTHORIZATION_ARTIFACT_BYTES = 65_536
+MAX_SCOPE_ARTIFACT_BYTES = 65_536
 
 
 class AuthorizationError(ValueError):
@@ -42,6 +43,26 @@ def read_authorization_artifact(path: Path) -> bytes:
 
     with path.open("rb") as stream:
         return stream.read(MAX_AUTHORIZATION_ARTIFACT_BYTES + 1)
+
+
+def read_blackbox_scope(path: Path) -> BlackBoxScope:
+    """Read one strict, bounded runtime scope document for the CLI boundary."""
+
+    with path.open("rb") as stream:
+        content = stream.read(MAX_SCOPE_ARTIFACT_BYTES + 1)
+    if not content:
+        raise AuthorizationError("an explicit black-box scope artifact is required")
+    if len(content) > MAX_SCOPE_ARTIFACT_BYTES:
+        raise AuthorizationError("black-box scope artifact exceeds the 64 KiB limit")
+    try:
+        raw = json.loads(
+            content.decode("utf-8"),
+            object_pairs_hook=_reject_duplicate_keys,
+            parse_constant=_reject_nonstandard_constant,
+        )
+        return BlackBoxScope.model_validate(raw)
+    except (UnicodeDecodeError, json.JSONDecodeError, ValidationError, _StrictJSONError) as exc:
+        raise AuthorizationError("black-box scope artifact is not valid strict JSON") from exc
 
 
 def verify_authorization_artifact(

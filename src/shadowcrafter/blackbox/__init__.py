@@ -9,11 +9,12 @@ from shadowcrafter.blackbox.assessor import (
     assess_authorized_targets,
     run_authorized_assessment,
 )
-from shadowcrafter.blackbox.authorization import AuthorizationError
+from shadowcrafter.blackbox.authorization import AuthorizationError, read_blackbox_scope
 from shadowcrafter.blackbox.models import (
     AuthorizationArtifact,
     BlackBoxAssessmentResult,
     EvidenceRecord,
+    PassiveBodySignal,
     SafetyLimits,
     TLSMetadata,
 )
@@ -26,8 +27,10 @@ __all__ = [
     "BlackBoxAssessmentResult",
     "EvidenceRecord",
     "NetworkSafetyError",
+    "PassiveBodySignal",
     "SafetyLimits",
     "TLSMetadata",
     "assess_authorized_targets",
+    "read_blackbox_scope",
     "run_authorized_assessment",
 ]
