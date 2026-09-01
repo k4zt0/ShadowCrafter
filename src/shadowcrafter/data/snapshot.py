@@ -1,13 +1,17 @@
-"""Immutable, hash-addressed snapshots for approved HTTPS JSON feeds."""
+"""Immutable, hash-addressed snapshots for approved bounded HTTPS documents."""
 
 from __future__ import annotations
 
+import io
 import json
+import re
+import zipfile
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 from urllib.parse import urljoin, urlparse
+from xml.etree import ElementTree as ET
 
 import httpx
 
@@ -15,10 +19,15 @@ from shadowcrafter.data.manifest import sha256_bytes, write_json_exclusive
 from shadowcrafter.data.registry import DataSource, SourceType, load_registry
 
 _SNAPSHOT_HOST_ALLOWLIST = {
+    "capec.mitre.org",
+    "cwe.mitre.org",
     "raw.githubusercontent.com",
     "www.cisa.gov",
 }
 _MAX_REDIRECTS = 3
+_MAX_ARCHIVE_ENTRIES = 64
+_MAX_ARCHIVE_UNCOMPRESSED_BYTES = 256 * 1024 * 1024
+_MAX_ARCHIVE_COMPRESSION_RATIO = 100
 
 
 @dataclass(frozen=True)
@@ -64,13 +73,17 @@ def _read_bounded(response: httpx.Response, max_bytes: int) -> bytes:
     return b"".join(chunks)
 
 
-def _fetch_json_source(
+def _fetch_source(
     client: httpx.Client,
     source: DataSource,
     global_max_bytes: int,
 ) -> FetchResult:
-    if source.url is None or source.type != SourceType.HTTP_JSON:
-        raise ValueError(f"source {source.id} is not an HTTPS JSON snapshot source")
+    if source.url is None or source.type not in {
+        SourceType.HTTP_ARCHIVE,
+        SourceType.HTTP_JSON,
+        SourceType.HTTP_XML,
+    }:
+        raise ValueError(f"source {source.id} is not a bounded HTTPS snapshot source")
     if not source.snapshot.enabled:
         raise ValueError(f"automatic snapshot is disabled for source {source.id}")
 
@@ -83,7 +96,7 @@ def _fetch_json_source(
             current_url,
             follow_redirects=False,
             headers={
-                "Accept": "application/json",
+                "Accept": ", ".join(source.snapshot.allowed_media_types),
                 "User-Agent": "ShadowCrafter-data-snapshot/1",
             },
         ) as response:
@@ -133,6 +146,61 @@ def _validate_json(content: bytes) -> None:
         raise ValueError("snapshot JSON must contain an object or array")
 
 
+def _validate_xml(content: bytes) -> None:
+    if re.search(rb"(?i)<!DOCTYPE|<!ENTITY", content):
+        raise ValueError("snapshot XML must not contain DTD or entity declarations")
+    try:
+        ET.fromstring(content)  # noqa: S314 - bounded input; DTD/entities rejected above.
+    except Exception as exc:
+        raise ValueError("snapshot response is not valid safe XML") from exc
+
+
+def _validate_zip_archive(content: bytes) -> None:
+    try:
+        with zipfile.ZipFile(io.BytesIO(content)) as archive:
+            entries = archive.infolist()
+            if not entries or len(entries) > _MAX_ARCHIVE_ENTRIES:
+                raise ValueError("snapshot archive has an invalid entry count")
+            total_uncompressed = 0
+            xml_entries = 0
+            for entry in entries:
+                path = Path(entry.filename)
+                if (
+                    entry.is_dir()
+                    or path.is_absolute()
+                    or ".." in path.parts
+                    or len(path.parts) != 1
+                    or entry.flag_bits & 0x1
+                ):
+                    raise ValueError("snapshot archive contains an unsafe entry")
+                total_uncompressed += entry.file_size
+                if total_uncompressed > _MAX_ARCHIVE_UNCOMPRESSED_BYTES:
+                    raise ValueError("snapshot archive expands beyond the safety limit")
+                if entry.file_size > max(1, entry.compress_size) * _MAX_ARCHIVE_COMPRESSION_RATIO:
+                    raise ValueError("snapshot archive exceeds the compression-ratio limit")
+                xml_entries += path.suffix.casefold() == ".xml"
+            if xml_entries != 1:
+                raise ValueError("snapshot archive must contain exactly one XML catalog")
+            bad_entry = archive.testzip()
+            if bad_entry is not None:
+                raise ValueError("snapshot archive failed its CRC check")
+    except zipfile.BadZipFile as exc:
+        raise ValueError("snapshot response is not a valid ZIP archive") from exc
+
+
+def _validate_content(source: DataSource, content: bytes) -> tuple[str, str]:
+    if source.type == SourceType.HTTP_JSON:
+        _validate_json(content)
+        return "snapshot.json", "json_parse"
+    if source.type == SourceType.HTTP_XML:
+        _validate_xml(content)
+        return "snapshot.xml", "xml_parse"
+    if source.type == SourceType.HTTP_ARCHIVE:
+        _validate_zip_archive(content)
+        return "snapshot.zip", "zip_inventory_and_crc"
+    raise AssertionError(f"unsupported snapshot source type: {source.type}")
+
+
 def snapshot_http_sources(
     config_path: Path,
     output_dir: Path,
@@ -154,17 +222,17 @@ def snapshot_http_sources(
     manifests: list[dict[str, Any]] = []
     try:
         for source in selected:
-            result = _fetch_json_source(
+            result = _fetch_source(
                 active_client,
                 source,
                 registry.policy.max_snapshot_bytes,
             )
-            _validate_json(result.content)
+            artifact_name, format_validation = _validate_content(source, result.content)
             digest = sha256_bytes(result.content)
             snapshot_id = f"{source.id}-{retrieved_at.strftime('%Y%m%dT%H%M%SZ')}-{digest[:12]}"
             target = output_dir / source.id / snapshot_id
             target.mkdir(parents=True, exist_ok=False)
-            snapshot_path = target / "snapshot.json"
+            snapshot_path = target / artifact_name
             with snapshot_path.open("xb") as handle:
                 handle.write(result.content)
 
@@ -198,14 +266,14 @@ def snapshot_http_sources(
                     "media_type": result.media_type,
                 },
                 "artifact": {
-                    "path": "snapshot.json",
+                    "path": artifact_name,
                     "sha256": digest,
                     "size": len(result.content),
                 },
                 "validation": {
                     "https_allowlist": "passed",
                     "bounded_download": "passed",
-                    "json_parse": "passed",
+                    format_validation: "passed",
                     "raw_malware_binaries": "prohibited_by_registry",
                 },
             }

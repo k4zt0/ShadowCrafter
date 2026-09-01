@@ -19,8 +19,10 @@ from shadowcrafter.data.ctibench import (
     CTIBenchTask,
     assert_no_ctibench_training_contamination,
     canonicalize_ctibench_evaluation,
+    find_ctibench_training_contamination,
     load_ctibench_eval_cases,
     render_ctibench_input,
+    write_ctibench_decontaminated_training_jsonl,
 )
 from shadowcrafter.data.hf_snapshot import snapshot_ctibench
 from shadowcrafter.data.manifest import canonical_json_sha256, sha256_file
@@ -323,6 +325,47 @@ def test_ctibench_contamination_scan_uses_hash_without_retaining_prompt(tmp_path
         assert_no_ctibench_training_contamination(
             [_training_record("embedded", f"Trusted wrapper:\n{rendered}\nReturn JSON.")], cases
         )
+
+
+def test_ctibench_decontamination_removes_only_hash_audited_overlap(tmp_path: Path) -> None:
+    snapshot_dir = _write_snapshot(tmp_path)
+    evaluation_path = tmp_path / "ctibench.eval.jsonl"
+    canonicalize_ctibench_evaluation(snapshot_dir, evaluation_path, registry_path=REGISTRY)
+    cases = load_ctibench_eval_cases(evaluation_path)
+    clean = _training_record("clean", "A separately authored defensive question")
+    leaked = _training_record("leaked", UPSTREAM_PROMPT)
+    input_path = tmp_path / "training.jsonl"
+    input_path.write_text(clean.model_dump_json() + "\n" + leaked.model_dump_json() + "\n")
+    output_path = tmp_path / "training.decontaminated.jsonl"
+
+    matches = find_ctibench_training_contamination([clean, leaked], cases)
+    assert [(match.record_id, match.reason) for match in matches] == [
+        ("leaked", "benchmark-content")
+    ]
+    manifest = write_ctibench_decontaminated_training_jsonl(
+        input_path,
+        evaluation_path,
+        output_path,
+    )
+
+    output_records = [
+        SecurityRecord.model_validate_json(line)
+        for line in output_path.read_text().splitlines()
+        if line.strip()
+    ]
+    assert [record.record_id for record in output_records] == ["clean"]
+    assert manifest["output"]["record_count"] == 1
+    assert manifest["removed"] == [
+        {
+            "record_id": "leaked",
+            "reason": "benchmark-content",
+            "training_content_sha256": leaked.canonical_hash(),
+        }
+    ]
+    assert manifest["controls"]["benchmark_text_retained_in_manifest"] is False
+    assert UPSTREAM_PROMPT not in (
+        output_path.with_suffix(output_path.suffix + ".manifest.json").read_text()
+    )
 
 
 def test_ctibench_adapter_rejects_binary_in_unscored_source_field(tmp_path: Path) -> None:

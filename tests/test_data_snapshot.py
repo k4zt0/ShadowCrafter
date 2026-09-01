@@ -1,4 +1,6 @@
+import io
 import json
+import zipfile
 from pathlib import Path
 
 import httpx
@@ -9,6 +11,8 @@ from shadowcrafter.data.snapshot import snapshot_http_sources
 
 REGISTRY = Path("configs/data/sources.yaml")
 CISA_URL = "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json"
+CAPEC_URL = "https://capec.mitre.org/data/xml/capec_latest.xml"
+CWE_URL = "https://cwe.mitre.org/data/xml/cwec_latest.xml.zip"
 
 
 def test_snapshot_writes_hash_addressed_artifact_and_manifest(tmp_path: Path) -> None:
@@ -43,6 +47,65 @@ def test_snapshot_writes_hash_addressed_artifact_and_manifest(tmp_path: Path) ->
     assert json.loads((target / "manifest.json").read_text())["upstream_revision"] == (
         '"revision-one"'
     )
+
+
+def test_snapshot_validates_and_pins_approved_xml(tmp_path: Path) -> None:
+    content = (
+        b'<Attack_Pattern_Catalog Date="2025-01-01"><Attack_Patterns/></Attack_Pattern_Catalog>'
+    )
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert str(request.url) == CAPEC_URL
+        return httpx.Response(
+            200,
+            headers={"content-type": "text/xml", "last-modified": "revision-capec"},
+            content=content,
+            request=request,
+        )
+
+    with httpx.Client(transport=httpx.MockTransport(handler)) as client:
+        manifests = snapshot_http_sources(
+            REGISTRY,
+            tmp_path,
+            source_ids={"mitre-capec"},
+            client=client,
+        )
+
+    manifest = manifests[0]
+    target = tmp_path / "mitre-capec" / manifest["snapshot_id"]
+    assert (target / "snapshot.xml").read_bytes() == content
+    assert manifest["validation"]["xml_parse"] == "passed"
+    assert manifest["upstream_revision"] == "revision-capec"
+
+
+def test_snapshot_validates_single_xml_zip_inventory(tmp_path: Path) -> None:
+    stream = io.BytesIO()
+    with zipfile.ZipFile(stream, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+        archive.writestr("cwec_v-test.xml", "<Weakness_Catalog/>")
+    content = stream.getvalue()
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert str(request.url) == CWE_URL
+        return httpx.Response(
+            200,
+            headers={"content-type": "application/zip", "etag": '"revision-cwe"'},
+            content=content,
+            request=request,
+        )
+
+    with httpx.Client(transport=httpx.MockTransport(handler)) as client:
+        manifests = snapshot_http_sources(
+            REGISTRY,
+            tmp_path,
+            source_ids={"mitre-cwe"},
+            client=client,
+        )
+
+    manifest = manifests[0]
+    target = tmp_path / "mitre-cwe" / manifest["snapshot_id"]
+    assert (target / "snapshot.zip").read_bytes() == content
+    assert manifest["validation"]["zip_inventory_and_crc"] == "passed"
+    assert manifest["upstream_revision"] == '"revision-cwe"'
 
 
 def test_snapshot_blocks_redirect_to_unapproved_host_before_request(tmp_path: Path) -> None:

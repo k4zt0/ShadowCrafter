@@ -2,7 +2,7 @@
 
 마지막 갱신: 2026-09-01 (Asia/Seoul)
 
-> 전체 진행률 추정: 약 40%. 이는 엔지니어링 작업량 기준이며 모델 성능 점수가
+> 전체 진행률 추정: 약 55%. 이는 엔지니어링 작업량 기준이며 모델 성능 점수가
 > 아닙니다. 모델은 아직 미출시 연구 후보이고 94% 목표는 아직 측정하지
 > 않았습니다. 정확도는 private experimental release 업로드를 차단하지 않습니다.
 
@@ -20,28 +20,36 @@
 ### ShadowCrafter-9B
 
 - upstream revision: `489cb97981b8654bcfcf30ce1f94ed1b62e07b53`
-- H100에서 한 optimizer-step QLoRA 호환성 검증 완료
-- train loss `3.349`, eval loss `3.565`
+- H100에서 두 optimizer-step QLoRA 호환성 검증 완료
+- preflight train loss `1.772` 확인(정확도 수치가 아님)
 - LoRA-only adapter 파일 검증 완료
-- 보안 학습 전체 run, 고정 외부 평가, 릴리스 게이트는 미완료
+- 2,017건 기준선 전체 학습 job `shadowcrafter-9b-full-1474c34-v1` 실행 중
+- 28,110건 확장 학습, 고정 외부 평가, 릴리스 게이트는 미완료
 
 ## 데이터와 평가
 
-- MITRE ATT&CK Enterprise/Mobile/ICS에서 출처가 고정된 방어형 학습 레코드
-  2,017개 생성
+- MITRE ATT&CK Enterprise/Mobile/ICS, CWE, CAPEC, OCSF와 Splunk Security
+  Content에서 출처가 고정된 방어형 학습 레코드 28,110개 생성
+- 기존 2,017건 대비 약 13.9배이며 threat intelligence 17,641건, detection
+  engineering 4,060건, SIEM query 3,093건, secure code review 2,868건,
+  CWE mapping 448건으로 구성
+- exact/normalized 중복 0건, secret redaction 0건이며 CAPEC에서 CTI-Bench와
+  겹친 3건만 hash-audited decontamination으로 제외
 - 그래프 계보 누수를 피하기 위해 이 artifact는 명시적인 train-only로 표시하며
   내부 validation/test 점수에 사용하지 않음
 - CTI-Bench 고정 revision의 5,610개 test row를 eval-only로 수집
 - 무정답 및 안전·형식 실패를 제외한 5,533개 외부 평가 후보 생성
 - CTI-Bench는 CC-BY-NC-SA-4.0이므로 학습 및 상업적 평가에 사용하지 않음
+- 최종 28,110개 학습 레코드와 5,533개 CTI-Bench 평가 레코드의 exact/embedded
+  오염 검사 결과 overlap 0건
 - accuracy, balanced accuracy, macro-F1과 오염을 원시 예측에서 다시 계산하는
   고정 평가 프로토콜 구현 완료; 0.94 달성 여부는 보고하되 업로드는 차단하지 않음
 
 ## 다음 순서
 
-1. 통합 테스트와 독립 코드 리뷰를 완료하고 GitHub/Hugging Face 모델 카드를 갱신
-2. 고정 commit과 train-only manifest로 9B 첫 보안 학습 candidate 실행
-3. 학습에 노출되지 않은 허용된 고정 외부 세트로 품질·안전·슬라이스 평가
+1. 실행 중인 2,017건 기준선 학습을 완료하고 adapter 무결성을 검증
+2. 고정 commit과 28,110건 train-only manifest로 9B 확장 학습 candidate 실행
+3. 학습에 노출되지 않은 허용된 고정 외부 세트로 정확도·안전·슬라이스 평가
 4. 실제 점수와 `94% target met` 상태를 적은 private Experimental Release 업로드
 5. 실패 분석은 개발 세트에만 반영하고 blind test 오염 없이 후속 모델 개선
 

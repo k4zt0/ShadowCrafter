@@ -46,6 +46,7 @@ class Redistribution(StrEnum):
 
 class SourceType(StrEnum):
     HTTP_JSON = "http_json"
+    HTTP_XML = "http_xml"
     HTTP_API = "http_api"
     HTTP_ARCHIVE = "http_archive"
     HTTP_GZIP_CSV = "http_gzip_csv"
@@ -192,8 +193,18 @@ class DataSource(BaseModel):
         if self.license.attribution_required and not self.attribution:
             raise ValueError(f"{self.id}: attribution text is required")
         if self.snapshot.enabled:
-            if self.type != SourceType.HTTP_JSON or self.url is None:
-                raise ValueError(f"{self.id}: automatic snapshots support only http_json")
+            if (
+                self.type
+                not in {
+                    SourceType.HTTP_ARCHIVE,
+                    SourceType.HTTP_JSON,
+                    SourceType.HTTP_XML,
+                }
+                or self.url is None
+            ):
+                raise ValueError(
+                    f"{self.id}: automatic snapshots support only bounded HTTP documents"
+                )
             if not self.temporal_snapshot:
                 raise ValueError(f"{self.id}: automatic snapshots must be temporal")
             if not self.snapshot.allowed_media_types:

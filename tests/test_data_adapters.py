@@ -1,11 +1,18 @@
 import base64
+import io
 import json
+import zipfile
 from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
 
-from shadowcrafter.data.adapters import AdapterKind, canonicalize_downloaded_source
+from shadowcrafter.data.adapters import (
+    AdapterKind,
+    canonicalize_downloaded_source,
+    canonicalize_ocsf_schema,
+    canonicalize_splunk_security_content,
+)
 from shadowcrafter.data.prepare import TemporalSplit, prepare_jsonl
 from shadowcrafter.schemas import RiskTier, SecurityRecord, TaskType
 
@@ -136,6 +143,141 @@ def test_attack_adapter_is_deterministic_source_grounded_and_prepare_compatible(
     assert prepared["split_counts"]["train"] == 1
 
 
+def test_attack_adapter_emits_detection_analytics_and_safe_procedure_mappings(
+    tmp_path: Path,
+) -> None:
+    source_path = tmp_path / "attack-expanded.json"
+    output_path = tmp_path / "attack-expanded.jsonl"
+    technique = {
+        "type": "attack-pattern",
+        "id": "attack-pattern--expanded-technique",
+        "name": "Suspicious DNS Activity",
+        "created": "2025-01-01T00:00:00Z",
+        "modified": "2025-02-01T00:00:00Z",
+        "external_references": [{"external_id": "T1999"}],
+    }
+    analytic = {
+        "type": "x-mitre-analytic",
+        "id": "x-mitre-analytic--expanded",
+        "name": "Analytic 1999",
+        "description": "Correlate repeated failed DNS lookups with unusual process lineage.",
+        "created": "2025-01-02T00:00:00Z",
+        "external_references": [{"external_id": "AN1999"}],
+        "x_mitre_log_source_references": [{"name": "linux:syslog", "channel": "DNS query"}],
+    }
+    strategy = {
+        "type": "x-mitre-detection-strategy",
+        "id": "x-mitre-detection-strategy--expanded",
+        "name": "Detect suspicious resolver behavior",
+        "created": "2025-01-02T00:00:00Z",
+        "external_references": [{"external_id": "DET1999"}],
+        "x_mitre_analytic_refs": [analytic["id"]],
+    }
+    group = {
+        "type": "intrusion-set",
+        "id": "intrusion-set--expanded",
+        "name": "Example Group",
+        "created": "2025-01-03T00:00:00Z",
+    }
+    relationships = [
+        {
+            "type": "relationship",
+            "id": "relationship--detects-expanded",
+            "relationship_type": "detects",
+            "source_ref": strategy["id"],
+            "target_ref": technique["id"],
+            "created": "2025-01-04T00:00:00Z",
+        },
+        {
+            "type": "relationship",
+            "id": "relationship--uses-expanded",
+            "relationship_type": "uses",
+            "source_ref": group["id"],
+            "target_ref": technique["id"],
+            "description": "Example Group generated periodic high-entropy DNS queries.",
+            "created": "2025-01-05T00:00:00Z",
+        },
+    ]
+    _write_json(
+        source_path,
+        {
+            "type": "bundle",
+            "objects": [technique, analytic, strategy, group, *relationships],
+        },
+    )
+
+    manifest = canonicalize_downloaded_source(
+        source_path,
+        output_path,
+        source_id="mitre-attack-enterprise",
+        upstream_revision="attack-expanded",
+        retrieved_at=RETRIEVED_AT,
+        registry_path=REGISTRY,
+    )
+
+    records = _read_records(output_path)
+    assert len(records) == 2
+    by_kind = {record.labels["record_kind"]: record for record in records}
+    detection = by_kind["attack_detection_analytic"]
+    assert detection.task == TaskType.DETECTION_ENGINEERING
+    assert "Analytic 1999 (AN1999)" in detection.messages[-1].content
+    assert "linux:syslog: DNS query" in detection.messages[-1].content
+    procedure = by_kind["attack_procedure_mapping"]
+    assert procedure.task == TaskType.THREAT_INTELLIGENCE
+    assert procedure.messages[-1].content == "Suspicious DNS Activity (T1999)"
+    assert procedure.split_group == detection.split_group
+    assert manifest["statistics"] == {
+        "candidate_count": 2,
+        "unsafe_skipped": 0,
+        "invalid_skipped": 0,
+    }
+
+
+def test_attack_adapter_filters_actionable_procedure_payloads(tmp_path: Path) -> None:
+    source_path = tmp_path / "attack-unsafe-procedure.json"
+    output_path = tmp_path / "attack-unsafe-procedure.jsonl"
+    _write_json(
+        source_path,
+        {
+            "type": "bundle",
+            "objects": [
+                {
+                    "type": "attack-pattern",
+                    "id": "attack-pattern--unsafe",
+                    "name": "Unsafe Example",
+                    "created": "2025-01-01T00:00:00Z",
+                    "external_references": [{"external_id": "T1998"}],
+                },
+                {
+                    "type": "malware",
+                    "id": "malware--unsafe",
+                    "name": "Unsafe Malware",
+                    "created": "2025-01-01T00:00:00Z",
+                },
+                {
+                    "type": "relationship",
+                    "id": "relationship--unsafe-procedure",
+                    "relationship_type": "uses",
+                    "source_ref": "malware--unsafe",
+                    "target_ref": "attack-pattern--unsafe",
+                    "description": "powershell -enc AAAA",
+                    "created": "2025-01-01T00:00:00Z",
+                },
+            ],
+        },
+    )
+
+    with pytest.raises(ValueError, match="adapter produced no safe source-grounded records"):
+        canonicalize_downloaded_source(
+            source_path,
+            output_path,
+            source_id="mitre-attack-enterprise",
+            upstream_revision="attack-expanded",
+            retrieved_at=RETRIEVED_AT,
+            registry_path=REGISTRY,
+        )
+
+
 def test_cwe_xml_adapter_emits_only_official_mitigation_text(tmp_path: Path) -> None:
     source_path = tmp_path / "cwe.xml"
     output_path = tmp_path / "cwe.jsonl"
@@ -183,6 +325,97 @@ def test_cwe_xml_adapter_emits_only_official_mitigation_text(tmp_path: Path) -> 
     assert manifest["statistics"]["unsafe_skipped"] == 1
 
 
+def test_cwe_xml_adapter_safely_reads_single_catalog_zip(tmp_path: Path) -> None:
+    source_path = tmp_path / "cwe.zip"
+    output_path = tmp_path / "cwe.jsonl"
+    xml = b"""<?xml version="1.0" encoding="UTF-8"?>
+<Weakness_Catalog xmlns="http://cwe.mitre.org/cwe-7" Date="2025-01-01">
+  <Weaknesses>
+    <Weakness ID="22" Name="Path Traversal" Status="Stable">
+      <Potential_Mitigations>
+        <Mitigation><Phase>Implementation</Phase>
+          <Description>Resolve paths beneath a trusted base directory.</Description>
+        </Mitigation>
+      </Potential_Mitigations>
+    </Weakness>
+  </Weaknesses>
+</Weakness_Catalog>"""
+    archive_bytes = io.BytesIO()
+    with zipfile.ZipFile(archive_bytes, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+        archive.writestr("cwec_v-test.xml", xml)
+    source_path.write_bytes(archive_bytes.getvalue())
+
+    canonicalize_downloaded_source(
+        source_path,
+        output_path,
+        source_id="mitre-cwe",
+        upstream_revision="cwe-zip-test",
+        retrieved_at=RETRIEVED_AT,
+        registry_path=REGISTRY,
+    )
+
+    record = _read_records(output_path)[0]
+    assert record.labels["cwe_id"] == "CWE-22"
+    assert record.messages[-1].content == (
+        "Implementation: Resolve paths beneath a trusted base directory."
+    )
+
+
+def test_capec_xml_adapter_emits_mitigations_and_cwe_mappings(tmp_path: Path) -> None:
+    source_path = tmp_path / "capec.xml"
+    output_path = tmp_path / "capec.jsonl"
+    source_path.write_text(
+        """<?xml version="1.0" encoding="UTF-8"?>
+<Attack_Pattern_Catalog xmlns="http://capec.mitre.org/capec-3"
+                        xmlns:xhtml="http://www.w3.org/1999/xhtml"
+                        Date="2025-01-01">
+  <Attack_Patterns>
+    <Attack_Pattern ID="100" Name="Example Pattern" Status="Stable">
+      <Description>An application accepts data without sufficient validation.</Description>
+      <Mitigations>
+        <Mitigation><xhtml:p>Validate input using a strict allowlist.</xhtml:p></Mitigation>
+      </Mitigations>
+      <Related_Weaknesses>
+        <Related_Weakness CWE_ID="20"/>
+        <Related_Weakness CWE_ID="79"/>
+      </Related_Weaknesses>
+      <Content_History>
+        <Submission><Submission_Date>2024-01-01</Submission_Date></Submission>
+        <Modification><Modification_Date>2025-02-01</Modification_Date></Modification>
+      </Content_History>
+    </Attack_Pattern>
+  </Attack_Patterns>
+</Attack_Pattern_Catalog>
+"""
+    )
+
+    manifest = canonicalize_downloaded_source(
+        source_path,
+        output_path,
+        source_id="mitre-capec",
+        upstream_revision="capec-3.9",
+        retrieved_at=RETRIEVED_AT,
+        registry_path=REGISTRY,
+    )
+
+    records = _read_records(output_path)
+    assert len(records) == 2
+    by_kind = {record.labels["record_kind"]: record for record in records}
+    mitigation = by_kind["capec_mitigation"]
+    assert mitigation.task == TaskType.SECURE_CODE_REVIEW
+    assert mitigation.messages[-1].content == "Validate input using a strict allowlist."
+    mapping = by_kind["capec_cwe_mapping"]
+    assert mapping.task == TaskType.CWE_MAPPING
+    assert mapping.messages[-1].content == "CWE-20, CWE-79"
+    assert mapping.labels["modified_at"] == "2025-02-01T00:00:00+00:00"
+    assert mapping.split_group == mitigation.split_group == "mitre-capec:CAPEC-100"
+    assert manifest["statistics"] == {
+        "candidate_count": 2,
+        "unsafe_skipped": 0,
+        "invalid_skipped": 0,
+    }
+
+
 def test_cwe_json_adapter_preserves_phase_and_lineage(tmp_path: Path) -> None:
     source_path = tmp_path / "cwe.json"
     output_path = tmp_path / "cwe.jsonl"
@@ -200,7 +433,11 @@ def test_cwe_json_adapter_preserves_phase_and_lineage(tmp_path: Path) -> None:
                         {
                             "phase": ["Architecture", "Implementation"],
                             "description": "Use parameterized database queries.",
-                        }
+                        },
+                        {
+                            "phase": ["Architecture", "Implementation"],
+                            "description": "Use parameterized database queries.",
+                        },
                     ],
                 }
             ],
@@ -214,7 +451,9 @@ def test_cwe_json_adapter_preserves_phase_and_lineage(tmp_path: Path) -> None:
         retrieved_at=RETRIEVED_AT,
         registry_path=REGISTRY,
     )
-    record = _read_records(output_path)[0]
+    records = _read_records(output_path)
+    assert len(records) == 1
+    record = records[0]
     assert record.messages[-1].content == (
         "Architecture Implementation: Use parameterized database queries."
     )
@@ -279,6 +518,155 @@ def test_defensive_catalog_adapter_supports_reviewed_owasp_style_shape(tmp_path:
     )
     assert record.labels["generation_method"] == "deterministic_source_template"
     assert manifest["statistics"]["invalid_skipped"] == 1
+
+
+def test_splunk_adapter_emits_only_production_detections(tmp_path: Path) -> None:
+    repository = tmp_path / "splunk-security-content"
+    detections = repository / "detections" / "endpoint"
+    detections.mkdir(parents=True)
+    (detections / "production.yml").write_text(
+        """name: Suspicious Authentication Pattern
+id: 11111111-1111-1111-1111-111111111111
+version: 1
+creation_date: '2025-01-01'
+modification_date: '2025-02-01'
+author: Security Researcher
+status: production
+type: Anomaly
+description: Detect repeated authentication failures followed by a success.
+data_source:
+  - Authentication Logs
+search: index=auth action=failure | stats count by user
+how_to_implement: Ingest normalized authentication events and tune the index macro.
+known_false_positives: Password resets and approved authentication testing.
+mitre_attack_id:
+  - T1110
+security_domain: identity
+tests:
+  - name: Ignored test metadata
+"""
+    )
+    (detections / "experimental.yml").write_text(
+        """name: Experimental Rule
+id: 22222222-2222-2222-2222-222222222222
+status: experimental
+"""
+    )
+    output_path = tmp_path / "splunk.jsonl"
+
+    manifest = canonicalize_splunk_security_content(
+        repository,
+        output_path,
+        upstream_revision="a" * 40,
+        retrieved_at=RETRIEVED_AT,
+        registry_path=REGISTRY,
+    )
+
+    records = _read_records(output_path)
+    assert len(records) == 1
+    record = records[0]
+    assert record.task == TaskType.SIEM_QUERY
+    assert record.labels["record_kind"] == "splunk_production_detection"
+    assert record.labels["mitre_attack_ids"] == ["T1110"]
+    assert "index=auth action=failure" in record.messages[-1].content
+    assert "Ignored test metadata" not in output_path.read_text()
+    assert manifest["statistics"] == {
+        "candidate_count": 2,
+        "unsafe_skipped": 0,
+        "invalid_skipped": 1,
+    }
+    assert manifest["controls"]["attack_simulation_excluded"] is True
+
+
+def test_splunk_adapter_rejects_duplicate_yaml_keys(tmp_path: Path) -> None:
+    repository = tmp_path / "splunk-security-content"
+    detections = repository / "detections"
+    detections.mkdir(parents=True)
+    (detections / "ambiguous.yml").write_text(
+        """name: First
+name: Second
+id: 11111111-1111-1111-1111-111111111111
+status: production
+"""
+    )
+
+    with pytest.raises(ValueError, match="duplicate YAML mapping key"):
+        canonicalize_splunk_security_content(
+            repository,
+            tmp_path / "splunk.jsonl",
+            upstream_revision="a" * 40,
+            retrieved_at=RETRIEVED_AT,
+            registry_path=REGISTRY,
+        )
+
+
+def test_ocsf_adapter_emits_dictionary_category_and_event_definitions(tmp_path: Path) -> None:
+    repository = tmp_path / "ocsf-schema"
+    events = repository / "events" / "identity"
+    events.mkdir(parents=True)
+    _write_json(repository / "version.json", {"version": "1.2.3"})
+    _write_json(
+        repository / "dictionary.json",
+        {
+            "attributes": {
+                "user": {
+                    "caption": "User",
+                    "description": "The user associated with the security activity.",
+                    "type": "user",
+                }
+            }
+        },
+    )
+    _write_json(
+        repository / "categories.json",
+        {
+            "attributes": {
+                "iam": {
+                    "uid": 3,
+                    "caption": "Identity and Access Management",
+                    "description": "Events related to authentication and access control.",
+                }
+            }
+        },
+    )
+    _write_json(
+        events / "authentication.json",
+        {
+            "name": "authentication",
+            "caption": "Authentication",
+            "description": "An authentication attempt and its outcome.",
+            "attributes": {
+                "user": {"requirement": "required"},
+                "src_endpoint": {"requirement": "recommended"},
+            },
+        },
+    )
+    output_path = tmp_path / "ocsf.jsonl"
+
+    manifest = canonicalize_ocsf_schema(
+        repository,
+        output_path,
+        upstream_revision="b" * 40,
+        upstream_committed_at=datetime(2026, 8, 31, tzinfo=UTC),
+        retrieved_at=RETRIEVED_AT,
+        registry_path=REGISTRY,
+    )
+
+    records = _read_records(output_path)
+    assert len(records) == 3
+    by_kind = {record.labels["schema_kind"]: record for record in records}
+    assert by_kind["attribute"].messages[-1].content.endswith("Type: user; cardinality: scalar.")
+    assert by_kind["category"].messages[-1].content.endswith("Category UID: 3.")
+    event = by_kind["event"]
+    assert event.task == TaskType.SIEM_QUERY
+    assert "Required attributes: user." in event.messages[-1].content
+    assert "Recommended attributes: src_endpoint." in event.messages[-1].content
+    assert manifest["statistics"] == {
+        "candidate_count": 3,
+        "unsafe_skipped": 0,
+        "invalid_skipped": 0,
+    }
+    assert manifest["controls"]["examples_and_logs_excluded"] is True
 
 
 @pytest.mark.parametrize(

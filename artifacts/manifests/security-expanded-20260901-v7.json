@@ -1,0 +1,49 @@
+{
+  "schema_version": 1,
+  "dataset_id": "security-expanded-20260901-v7-train-only",
+  "created_at_utc": "2026-09-01T11:51:35.154458+00:00",
+  "split_mode": "train_only",
+  "record_count": 28110,
+  "input_set_sha256": "33e059c0a45fc05eec660aa5c58fb4be2c57443d9ed0ab801e2d1572f6817155",
+  "dataset_sha256": "a1a46d40b692b6478491f8d14b045bb79ed7c8cf652aae202a14e7f4821ea8b1",
+  "prepared_manifest": {
+    "path": "data/processed/security-expanded-20260901-v7-train-only/manifest.json",
+    "sha256": "9b1fc8f14abce9505cddb75d84c58530cf39218c971c7c05ecd9914d71423b89"
+  },
+  "train": {
+    "path": "data/processed/security-expanded-20260901-v7-train-only/train.jsonl",
+    "sha256": "63d2e2f3bbe7efa0a6a1487977a1dc1f30055e2dc71ce1e3df986d6ad04a1179",
+    "size": 53793572,
+    "record_count": 28110
+  },
+  "registry": {
+    "path": "configs/data/sources.yaml",
+    "canonical_sha256": "bdc69660611ee64db3aa5d3279e9859c81a64c08ba55bd46d0c51fe25fd09405",
+    "raw_file_sha256": "a1dd3af07b29bc72cc8145f6d1f608384c120f6eea2ebc653a9d24c0f04fb2c7"
+  },
+  "quality": {
+    "exact_duplicate_count": 0,
+    "normalized_duplicate_count": 0,
+    "secret_redactions": 0,
+    "ctibench_evaluation_record_count": 5533,
+    "ctibench_evaluation_sha256": "e78c90f1d4d9f75cd9a8011cad80b9614654f1d4a86c536144da0bc79e85a14f",
+    "ctibench_overlap_count": 0,
+    "decontaminated_record_count": 3
+  },
+  "task_counts": {
+    "threat_intelligence": 17641,
+    "detection_engineering": 4060,
+    "siem_query": 3093,
+    "secure_code_review": 2868,
+    "cwe_mapping": 448
+  },
+  "source_counts": {
+    "mitre-attack-enterprise": 19079,
+    "mitre-attack-mobile": 1854,
+    "mitre-attack-ics": 768,
+    "mitre-cwe": 1699,
+    "mitre-capec": 1617,
+    "splunk-security-content": 1987,
+    "ocsf-schema": 1106
+  }
+}

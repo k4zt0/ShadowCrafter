@@ -244,7 +244,7 @@ sources:
     type: http_archive
     policy_class: allow_train
     allowed_purposes: [train, rag]
-    url: https://cwe.mitre.org/data/downloads.html
+    url: https://cwe.mitre.org/data/xml/cwec_latest.xml.zip
     license:
       id: MITRE-CWE-Terms-of-Use
       url: https://cwe.mitre.org/about/termsofuse.html
@@ -254,6 +254,10 @@ sources:
     attribution: Copyright The MITRE Corporation; reproduced under the CWE Terms of Use
     mutable: true
     temporal_snapshot: true
+    snapshot:
+      enabled: true
+      max_bytes: 16777216
+      allowed_media_types: [application/zip, application/octet-stream]
     safety:
       content_kind: taxonomy
       raw_malware_binaries: false
@@ -265,10 +269,10 @@ sources:
   - id: mitre-capec
     title: Common Attack Pattern Enumeration and Classification
     provider: MITRE
-    type: http_archive
+    type: http_xml
     policy_class: allow_train
     allowed_purposes: [train, rag]
-    url: https://capec.mitre.org/data/downloads.html
+    url: https://capec.mitre.org/data/xml/capec_latest.xml
     license:
       id: MITRE-CAPEC-Terms-of-Use
       url: https://capec.mitre.org/about/termsofuse.html
@@ -278,6 +282,10 @@ sources:
     attribution: Copyright The MITRE Corporation; reproduced under the CAPEC Terms of Use
     mutable: true
     temporal_snapshot: true
+    snapshot:
+      enabled: true
+      max_bytes: 16777216
+      allowed_media_types: [application/xml, text/xml]
     safety:
       content_kind: taxonomy
       raw_malware_binaries: false
@@ -488,7 +496,8 @@ sources:
       content_kind: detection_rules
       raw_malware_binaries: false
       executable_content: false
-      required_filters: [detections-and-documentation-only, exclude-attack-simulation-code]
+      required_filters:
+        [production-detections-only, exclude-tests, exclude-attack-simulation-code]
     split_group_keys: [id, name]
     time_fields: [date, version, git.commit_time]
 

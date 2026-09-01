@@ -752,11 +752,20 @@ def load_ctibench_eval_cases(path: Path) -> list[CTIBenchEvalCase]:
     return cases
 
 
-def assert_no_ctibench_training_contamination(
+@dataclass(frozen=True, slots=True)
+class CTIBenchContaminationMatch:
+    """Hash-only training/evaluation overlap evidence."""
+
+    record_id: str
+    reason: Literal["benchmark-content", "ctibench-provenance"]
+    training_content_sha256: str
+
+
+def find_ctibench_training_contamination(
     training_records: Iterable[SecurityRecord],
     evaluation_cases: Sequence[CTIBenchEvalCase],
-) -> None:
-    """Reject CTIBench provenance and exact or embedded normalized benchmark text."""
+) -> tuple[CTIBenchContaminationMatch, ...]:
+    """Find CTIBench provenance and exact or embedded normalized benchmark text."""
 
     if not evaluation_cases:
         raise ValueError("CTIBench contamination scan requires non-empty evaluation cases")
@@ -782,10 +791,16 @@ def assert_no_ctibench_training_contamination(
             case.provenance.rendered_input_normalized_sha256,
         )
     }
-    contaminated: list[str] = []
+    contaminated: list[CTIBenchContaminationMatch] = []
     for record in training_records:
         if record.provenance.source_id == "ctibench":
-            contaminated.append(f"{record.record_id}:ctibench-provenance")
+            contaminated.append(
+                CTIBenchContaminationMatch(
+                    record_id=record.record_id,
+                    reason="ctibench-provenance",
+                    training_content_sha256=record.canonical_hash(),
+                )
+            )
             continue
         if record_contains_raw_binary(record):
             raise ValueError(f"training record contains raw binary payload: {record.record_id}")
@@ -796,7 +811,123 @@ def assert_no_ctibench_training_contamination(
                 or (len(normalized) >= 80 and normalized in benchmark)
                 for benchmark in benchmark_texts
             ):
-                contaminated.append(f"{record.record_id}:benchmark-content")
+                contaminated.append(
+                    CTIBenchContaminationMatch(
+                        record_id=record.record_id,
+                        reason="benchmark-content",
+                        training_content_sha256=record.canonical_hash(),
+                    )
+                )
                 break
+    return tuple(sorted(contaminated, key=lambda item: (item.record_id, item.reason)))
+
+
+def assert_no_ctibench_training_contamination(
+    training_records: Iterable[SecurityRecord],
+    evaluation_cases: Sequence[CTIBenchEvalCase],
+) -> None:
+    """Reject CTIBench provenance and exact or embedded normalized benchmark text."""
+
+    contaminated = find_ctibench_training_contamination(training_records, evaluation_cases)
     if contaminated:
-        raise ValueError(f"CTIBench training contamination detected: {sorted(contaminated)}")
+        labels = [f"{item.record_id}:{item.reason}" for item in contaminated]
+        raise ValueError(f"CTIBench training contamination detected: {labels}")
+
+
+def write_ctibench_decontaminated_training_jsonl(
+    input_path: Path,
+    evaluation_path: Path,
+    output_path: Path,
+) -> dict[str, Any]:
+    """Remove only hash-audited CTIBench overlaps from one canonical training file."""
+
+    manifest_path = output_path.with_suffix(output_path.suffix + ".manifest.json")
+    existing = [str(path) for path in (output_path, manifest_path) if path.exists()]
+    if existing:
+        raise FileExistsError(f"refusing to overwrite decontamination artifacts: {existing}")
+
+    input_sha256 = sha256_file(input_path)
+    input_size = input_path.stat().st_size
+    evaluation_sha256 = sha256_file(evaluation_path)
+    evaluation_size = evaluation_path.stat().st_size
+    cases = load_ctibench_eval_cases(evaluation_path)
+    records: list[SecurityRecord] = []
+    serialized: list[str] = []
+    seen_record_ids: set[str] = set()
+    with input_path.open(encoding="utf-8") as handle:
+        for line_number, line in enumerate(handle, start=1):
+            if not line.strip():
+                continue
+            try:
+                record = SecurityRecord.model_validate_json(line)
+            except Exception as exc:
+                raise ValueError(
+                    f"invalid training record at {input_path}:{line_number}: {exc}"
+                ) from exc
+            if record.record_id in seen_record_ids:
+                raise ValueError(f"duplicate training record ID: {record.record_id}")
+            if record.provenance.content_sha256.lower() != record.canonical_hash():
+                raise ValueError(f"training record checksum mismatch: {record.record_id}")
+            seen_record_ids.add(record.record_id)
+            records.append(record)
+            serialized.append(line if line.endswith("\n") else f"{line}\n")
+
+    if sha256_file(input_path) != input_sha256 or input_path.stat().st_size != input_size:
+        raise ValueError("canonical training input changed during decontamination scan")
+    if (
+        sha256_file(evaluation_path) != evaluation_sha256
+        or evaluation_path.stat().st_size != evaluation_size
+    ):
+        raise ValueError("CTIBench evaluation input changed during decontamination scan")
+
+    matches = find_ctibench_training_contamination(records, cases)
+    removed_ids = {match.record_id for match in matches}
+    if not removed_ids:
+        raise ValueError("decontamination requires at least one verified overlap")
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    with output_path.open("x", encoding="utf-8") as writer:
+        for record, line in zip(records, serialized, strict=True):
+            if record.record_id not in removed_ids:
+                writer.write(line)
+
+    output_count = len(records) - len(removed_ids)
+    if output_count <= 0:
+        output_path.unlink()
+        raise ValueError("decontamination would remove the entire training file")
+    manifest: dict[str, Any] = {
+        "schema_version": 1,
+        "algorithm": "ctibench-normalized-content-exact-and-containment-v1",
+        "input": {
+            "path": str(input_path),
+            "sha256": input_sha256,
+            "size": input_size,
+            "record_count": len(records),
+        },
+        "evaluation": {
+            "path": str(evaluation_path),
+            "sha256": evaluation_sha256,
+            "size": evaluation_size,
+            "record_count": len(cases),
+            "upstream_revision": CTIBENCH_REVIEWED_REVISION,
+        },
+        "removed": [
+            {
+                "record_id": match.record_id,
+                "reason": match.reason,
+                "training_content_sha256": match.training_content_sha256,
+            }
+            for match in matches
+        ],
+        "output": {
+            "path": str(output_path),
+            "sha256": sha256_file(output_path),
+            "size": output_path.stat().st_size,
+            "record_count": output_count,
+        },
+        "controls": {
+            "benchmark_text_retained_in_manifest": False,
+            "source_records_other_than_exact_overlaps_changed": False,
+        },
+    }
+    write_json_exclusive(manifest_path, manifest)
+    return manifest
