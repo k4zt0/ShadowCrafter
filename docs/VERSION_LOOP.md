@@ -6,7 +6,7 @@
 1. 체크포인트와 실행 manifest를 다시 해시하고 안전한 LoRA surface를 검증합니다.
 2. 고정된 CTIBench 5,533건에서 accuracy, balanced accuracy, macro-F1을 전체 및
    과제별로 다시 계산합니다.
-3. 실제 점수를 적은 private `Experimental Release`를
+3. 실제 점수를 적은 private `Official Release`를
    `KaztoRay/ShadowCrafter-9B`의 `releases/vN.0/` 경로에 올리고 동일한 Git tag를
    생성합니다.
 4. 모든 전체·과제별 지표가 0.95 이상이면 종료합니다. 미달이면 승인된 학습

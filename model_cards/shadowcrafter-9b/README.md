@@ -118,8 +118,8 @@ validity, and safety-policy accuracy. Minimum sample counts, confidence-bound tr
 split hashes, zero-contamination requirements, slice results, and failure cases must
 accompany any future result.
 
-Below-target checkpoints may be uploaded as private **Experimental Releases** only when the
-model card reports the actual scores, evaluation snapshot, and `94% target met: no`.
+Below-target checkpoints may be uploaded as private **Official Releases** only when the
+model card reports the actual scores, evaluation snapshot, and `95% target met: no`.
 Generative report quality, factual grounding, calibration, useful handling of legitimate
 defensive requests, and resistance to unsafe requests require separate evaluation. A model
 that misses any mandatory safety, provenance, privacy, licensing, or artifact-integrity gate

@@ -43,13 +43,13 @@ ShadowCrafter는 다음 원칙을 따릅니다.
 “95% 이상”은 범용 해킹 능력이나 모든 보안 업무에 대한 단일 정확도 약속이
 아닙니다. 사전에 고정한 누수 없는 테스트 세트에서 지정 과제의 목표 달성 여부를
 표시하는 수치입니다. 실제 점수는 높거나 낮은 그대로 보고하며, `0.95` 미달만으로
-private experimental release 업로드를 막지 않습니다. 생성형 보고서, 안전성,
+private official release 업로드를 막지 않습니다. 생성형 보고서, 안전성,
 캘리브레이션처럼 accuracy가 부적절한 과제는 별도의 루브릭을 사용합니다.
 
 테스트 세트를 보고 재학습하거나 임계값에 도달할 때까지 같은 테스트 세트에
 과적합하지 않습니다. 중복·근접 중복 제거, 출처/프로젝트/시간 분리, 블라인드
 평가, 신뢰구간과 실패 사례 보고가 필수입니다. 목표 미달 릴리스에는
-`Experimental`, 실제 점수, 평가 범위와 `95% target met: no`를 명시합니다. 정확도와
+`Official Release`, 실제 점수, 평가 범위와 `95% target met: no`를 명시합니다. 정확도와
 별개로 무결성·라이선스·개인정보·안전성에 실패한 artifact는 업로드하지 않습니다.
 자세한 기준은 [docs/MODEL_RELEASE_POLICY.md](docs/MODEL_RELEASE_POLICY.md)에 있습니다.
 학습 완료 후 `v1.0`, `v2.0` 순으로 평가·비공개 업로드·재학습을 잇는 자동화는
@@ -106,4 +106,4 @@ SSH 키, Hugging Face 토큰, GitHub 토큰은 저장소나 학습 이미지에 
 
 ShadowCrafter is a defensive-first cybersecurity LLM project developed by Odytssey and fine-tuned from Ornith-1.5-9B. Its intended uses include authorized vulnerability and CVE analysis, defensive malware triage, evidence-grounded reporting, security knowledge bases, and human-approved SIEM/SOAR assistance. Offensive evaluation is limited to explicitly authorized, isolated sandboxes; unauthorized access, malware development or deployment, credential theft, persistence, destructive actions, and evasion are prohibited.
 
-The local workstation is the source of truth for code, approved data, manifests, and evaluation evidence. At the operator's direction it does not retain base-model or checkpoint weights; those remain on approved remote storage and private per-model Hugging Face repositories with locally retained hashes and provenance. The “95%” value is a reported target for predeclared, leakage-free, task-specific metrics—not a universal accuracy claim or performance guarantee. Each completed version may be published only as a clearly labeled private Experimental Release; integrity, safety, licensing, privacy, and provenance failures still block publication.
+The local workstation is the source of truth for code, approved data, manifests, and evaluation evidence. At the operator's direction it does not retain base-model or checkpoint weights; those remain on approved remote storage and private per-model Hugging Face repositories with locally retained hashes and provenance. The “95%” value is a reported target for predeclared, leakage-free, task-specific metrics—not a universal accuracy claim or performance guarantee. Each completed version may be published as a clearly labeled private Official Release even below the target; integrity, safety, licensing, privacy, and provenance failures still block publication.

@@ -15,7 +15,7 @@
 | Run | 학습 중이거나 중단된 산출물 | 없음; 원격 GPU 임시 저장만 허용 |
 | Candidate | 원격에서 검증 중이며 로컬 manifest가 있는 checkpoint | 없음 |
 | Research | 학습 중간 산출물 또는 제한된 내부 평가용 | 승인된 내부 접근만, release 태그 금지 |
-| Experimental Release | 정확도 목표 달성 여부와 실제 점수를 명시한 immutable 번들 | 9B private Hugging Face 저장소 |
+| Official Release | 정확도 목표 달성 여부와 실제 점수를 명시한 immutable 정식 번들 | 9B private Hugging Face 저장소 |
 | Qualified Release | 선언한 품질 목표와 모든 필수 통제를 통과한 immutable 번들 | 9B private Hugging Face 저장소 |
 | Withdrawn | 결함, 권리, 보안 또는 provenance 문제로 철회 | private 전환/접근 차단 및 정상 revision 안내 |
 
@@ -24,7 +24,7 @@ Public 공개는 기본 범위가 아닙니다. 별도의 경영 승인, 기반 
 ## 3. 95% 품질 목표와 의무 보고
 
 `0.95`는 사전에 선언한 **누수 없는 과제별 주 지표**의 목표이며 모델 전체에
-대한 하나의 “정확도”나 성능 보장이 아닙니다. 정확도는 private Experimental
+대한 하나의 “정확도”나 성능 보장이 아닙니다. 정확도는 private Official
 Release의 차단 조건이 아니며, 점수와 목표 달성 여부를 정직하게 표시하는
 보고 조건입니다.
 
@@ -56,7 +56,7 @@ balanced accuracy, recall, precision과 confusion matrix를 함께 공개합니�
 
 따라서 후속 재학습은 테스트 세트 암기나 무기한 성능 약속이 아닙니다. 독립 평가의
 무결성을 지키면서 모델을 개선하되, 목표 미달 모델도 사용자의 지시에 따라
-private Experimental Release로 게시할 수 있습니다. `Qualified` 또는 `95% 달성`
+private Official Release로 게시할 수 있습니다. `Qualified` 또는 `95% 달성`
 표기는 실제 통과 증거가 있을 때만 허용합니다.
 
 ## 5. 필수 릴리스 게이트
@@ -134,7 +134,7 @@ immutable 원격 릴리스 번들에는 최소한 다음이 있어야 합니다.
 
 학습이 끝났다는 사실만으로 게시할 수 있는 것은 아닙니다. 무결성·안전성·권리·
 개인정보·계보 통제를 통과한 immutable 번들만 게시합니다. 정확도 목표 미달은
-`Experimental Release`와 실제 점수로 명시하되 게시를 막지 않습니다. 로컬 manifest는
+`Official Release`와 실제 점수로 명시하되 게시를 막지 않습니다. 로컬 manifest는
 weight 사본이 아니므로 private Hub와 별도 승인 원격 위치의 복구 가능성을 모두 유지합니다.
 
 ## 8. 버전, 변경과 롤백

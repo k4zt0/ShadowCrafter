@@ -200,16 +200,16 @@ class BlockingReviewEvidence(_StrictModel):
     report: FileReference
 
 
-class ExperimentalPublicationEvidence(_StrictModel):
-    """Private experimental publication controls; quality is deliberately non-blocking."""
+class OfficialPublicationEvidence(_StrictModel):
+    """Private official publication controls; quality is deliberately non-blocking."""
 
-    release_tier: Literal["Experimental Release"]
+    release_tier: Literal["Official Release"]
     visibility: Literal["private"]
     public_release_requested: Literal[False]
     commercial_release_requested: Literal[False]
     quality_target_is_publication_blocker: Literal[False]
     model_card_reports_evaluation: Literal[True]
-    model_card_labels_experimental: Literal[True]
+    model_card_labels_official: Literal[True]
     artifact_integrity_review: BlockingReviewEvidence
     provenance_review: BlockingReviewEvidence
     license_review: BlockingReviewEvidence
@@ -229,7 +229,7 @@ class FrozenReleaseEvidence(_StrictModel):
     training_corpora: list[TrainingCorpusReference] = Field(min_length=1, max_length=128)
     contamination: ContaminationEvidence
     benchmark_license: BenchmarkLicenseEvidence
-    publication: ExperimentalPublicationEvidence
+    publication: OfficialPublicationEvidence
 
     @model_validator(mode="after")
     def validate_bundle(self) -> FrozenReleaseEvidence:
@@ -309,12 +309,12 @@ class StrictReleaseGateConfig(_StrictModel):
     evaluator_version: str = Field(pattern=_SAFE_IDENTIFIER_PATTERN)
     require_clean_git: Literal[True]
     quality_target_is_publication_blocker: Literal[False]
-    authorization_scope: Literal["noncommercial-private-experimental-release"]
+    authorization_scope: Literal["noncommercial-private-official-release"]
     commercial_use_permitted: Literal[False]
     model_publication_authorized: Literal[True]
     required_visibility: Literal["private"]
     public_publication_authorized: Literal[False]
-    release_tier: Literal["Experimental Release"]
+    release_tier: Literal["Official Release"]
     benchmark: BenchmarkRule
     allowed_candidates: dict[Literal["ShadowCrafter-9B"], CandidateRule] = Field(
         min_length=1,

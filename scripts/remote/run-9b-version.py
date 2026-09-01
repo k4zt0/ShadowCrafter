@@ -536,13 +536,13 @@ def _build_evidence(
             "license_review_sha256": review_hashes["license"],
         },
         "publication": {
-            "release_tier": "Experimental Release",
+            "release_tier": "Official Release",
             "visibility": "private",
             "public_release_requested": False,
             "commercial_release_requested": False,
             "quality_target_is_publication_blocker": False,
             "model_card_reports_evaluation": True,
-            "model_card_labels_experimental": True,
+            "model_card_labels_official": True,
             **{
                 f"{name}_review": {
                     "passed": True,
@@ -573,7 +573,7 @@ def _model_card(version: str, checkpoint_sha: str, report: Mapping[str, Any]) ->
     metadata = {
         "license": "other",
         "shadowcrafter_release": {
-            "status": "Experimental Release",
+            "status": "Official Release",
             "visibility": "private",
             "commercial_use": False,
             "release_id": version,
@@ -592,10 +592,10 @@ def _model_card(version: str, checkpoint_sha: str, report: Mapping[str, Any]) ->
     }
     target = "yes" if report["quality_target_met"] else "no"
     body = (
-        "# ShadowCrafter-9B Experimental Release\n\n"
+        "# ShadowCrafter-9B Official Release\n\n"
         f"Version: `{version}`  \n"
         "Developed by Odytssey. Fine-tuned from ornith-ai/Ornith-1.5-9B.\n\n"
-        "This is a private, noncommercial Experimental Release for defensive cybersecurity "
+        "This is a private, noncommercial Official Release for defensive cybersecurity "
         "research. It is not a performance guarantee or authorization for unsanctioned access.\n\n"
         f"Frozen CTIBench accuracy: `{metrics['accuracy']:.6f}`  \n"
         f"Balanced accuracy: `{metrics['balanced_accuracy']:.6f}`  \n"
@@ -632,7 +632,7 @@ def _release_approval(
         "release_id": version,
         "candidate_checkpoint_sha256": checkpoint_sha,
         "remote_inventory_sha256": inventory_sha,
-        "private_experimental_release_authorized": True,
+        "private_official_release_authorized": True,
         "public_release_authorized": False,
     }
     if name == "license":
@@ -730,7 +730,7 @@ def _stage_release(
         "version": version,
         "release_id": version,
         "repo_id": _MODEL_ID,
-        "release_tier": "Experimental Release",
+        "release_tier": "Official Release",
         "visibility": "private",
         "commercial_release": False,
         "candidate_checkpoint_sha256": checkpoint_sha,

@@ -825,7 +825,7 @@ def _verify_benchmark(
     if (
         gate.protocol != request.protocol
         or gate.quality_target_is_publication_blocker
-        or gate.authorization_scope != "noncommercial-private-experimental-release"
+        or gate.authorization_scope != "noncommercial-private-official-release"
         or gate.commercial_use_permitted
         or gate.required_visibility != "private"
         or rule.repository_id != benchmark.repository_id

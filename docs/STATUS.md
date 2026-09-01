@@ -4,7 +4,7 @@
 
 > 전체 진행률 추정: 약 55%. 이는 엔지니어링 작업량 기준이며 모델 성능 점수가
 > 아닙니다. 모델은 아직 미출시 연구 후보이고 95% 목표는 아직 측정하지
-> 않았습니다. 정확도는 private experimental release 업로드를 차단하지 않습니다.
+> 않았습니다. 정확도는 private official release 업로드를 차단하지 않습니다.
 
 ## 완료된 기반 작업
 
@@ -57,9 +57,9 @@
 1. 실행 중인 2,017건 기준선 학습을 완료하고 adapter 무결성을 검증
 2. 고정 commit과 28,140건 train-only manifest로 9B 확장 학습 candidate 실행
 3. 학습에 노출되지 않은 허용된 고정 외부 세트로 정확도·안전·슬라이스 평가
-4. 실제 점수와 `95% target met` 상태를 적은 private Experimental Release 업로드
+4. 실제 점수와 `95% target met` 상태를 적은 private Official Release 업로드
 5. 실패 분석은 개발 세트에만 반영하고 blind test 오염 없이 후속 모델 개선
 
 실제 95% 달성 여부는 사전에 보장할 수 없습니다. 목표 미달은 실제 점수와 함께
-Experimental Release로 게시합니다. 다만 안전성, 라이선스, 개인정보, 계보 또는
+Official Release로 게시합니다. 다만 안전성, 라이선스, 개인정보, 계보 또는
 artifact 무결성 통제에 실패하면 정확도와 관계없이 게시하지 않습니다.

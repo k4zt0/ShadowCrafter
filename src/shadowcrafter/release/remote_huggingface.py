@@ -170,7 +170,7 @@ class RemoteReleaseManifest(_StrictModel):
     schema_version: Literal[1]
     release_id: str = Field(pattern=_RELEASE_ID)
     repo_id: Literal["KaztoRay/ShadowCrafter-9B"]
-    release_tier: Literal["Experimental Release"]
+    release_tier: Literal["Official Release"]
     visibility: Literal["private"]
     commercial_release: Literal[False]
     parent_commit: str = Field(pattern=_COMMIT)
@@ -244,7 +244,7 @@ class PublishResult:
             "total_bytes": self.total_bytes,
             "file_count": self.file_count,
             "visibility": "private",
-            "release_tier": "Experimental Release",
+            "release_tier": "Official Release",
         }
 
 
@@ -389,7 +389,7 @@ def _verify_approvals(manifest: RemoteReleaseManifest, root: Path) -> dict[str, 
             or payload.get("release_id") != manifest.release_id
             or payload.get("candidate_checkpoint_sha256") != manifest.candidate_checkpoint_sha256
             or payload.get("remote_inventory_sha256") != inventory_sha256
-            or payload.get("private_experimental_release_authorized") is not True
+            or payload.get("private_official_release_authorized") is not True
             or payload.get("public_release_authorized") is not False
         ):
             raise ValueError(f"{name} approval is missing, failed, or bound to another release")
@@ -567,10 +567,10 @@ def _evaluation_report(
         or authorization.get("model_publication_authorized") is not True
         or authorization.get("required_visibility") != "private"
         or authorization.get("public_publication_authorized") is not False
-        or authorization.get("release_tier") != "Experimental Release"
+        or authorization.get("release_tier") != "Official Release"
         or authorization.get("commercial_use_permitted") is not False
     ):
-        raise ValueError("evaluation evidence does not authorize private Experimental Release")
+        raise ValueError("evaluation evidence does not authorize private Official Release")
     if not isinstance(result.report.get("quality_target_met"), bool):
         raise ValueError("evaluation report must explicitly report quality_target_met")
     return result.report
@@ -601,15 +601,15 @@ def _validate_model_card(
     if not isinstance(release, dict) or not isinstance(evaluation, dict):
         raise ValueError("model card lacks machine-readable release/evaluation metadata")
     if (
-        release.get("status") != "Experimental Release"
+        release.get("status") != "Official Release"
         or release.get("visibility") != "private"
         or release.get("commercial_use") is not False
         or release.get("release_id") != manifest.release_id
         or release.get("repository") != manifest.repo_id
         or release.get("candidate_checkpoint_sha256") != manifest.candidate_checkpoint_sha256
-        or "Experimental Release" not in body
+        or "Official Release" not in body
     ):
-        raise ValueError("model card must prominently identify a private Experimental Release")
+        raise ValueError("model card must prominently identify a private Official Release")
     if report is None:
         if (
             evaluation.get("status") != "not-yet-evaluated"
@@ -694,7 +694,7 @@ def _commit_sha(value: Any) -> str:
     raise ValueError("Hugging Face commit response lacks an immutable commit SHA")
 
 
-def publish_remote_experimental_release(
+def publish_remote_official_release(
     manifest_path: Path,
     *,
     manifest_sha256: str,
@@ -706,7 +706,7 @@ def publish_remote_experimental_release(
     hub_streamer: HubStreamer = _default_hub_stream,
     operation_factory: OperationFactory = _default_operation,
 ) -> PublishResult:
-    """Publish one manifest-verified private Experimental Release without local weight files."""
+    """Publish one manifest-verified private Official Release without local weight files."""
 
     manifest, observed_manifest_sha256 = load_remote_release_manifest(
         manifest_path,

@@ -401,7 +401,7 @@ class AutomationController:
             if (
                 not isinstance(payload, dict)
                 or payload.get("visibility") != "private"
-                or payload.get("release_tier") != "Experimental Release"
+                or payload.get("release_tier") != "Official Release"
                 or not isinstance(payload.get("commit_sha"), str)
             ):
                 raise AutomationError("publisher did not return a verified private release receipt")

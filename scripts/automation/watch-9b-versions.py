@@ -28,7 +28,7 @@ from shadowcrafter.automation.models import (
     RemoteJobDocument,
     RemoteJobStatus,
 )
-from shadowcrafter.release.remote_huggingface import publish_remote_experimental_release
+from shadowcrafter.release.remote_huggingface import publish_remote_official_release
 
 _HOST = "capella.cloud.vessl.ai"
 _PORT = 31044
@@ -373,7 +373,7 @@ def _publish(
         "schema_version": 1,
         "release_id": version,
         "repo_id": _REPO_ID,
-        "release_tier": "Experimental Release",
+        "release_tier": "Official Release",
         "visibility": "private",
         "commercial_release": False,
         "parent_commit": before.sha,
@@ -391,7 +391,7 @@ def _publish(
     }
     manifest_path = local_version / "remote-release-manifest.json"
     _write_json_exclusive(manifest_path, manifest)
-    result = publish_remote_experimental_release(
+    result = publish_remote_official_release(
         manifest_path,
         manifest_sha256=_sha256(manifest_path),
         ssh_key=key,

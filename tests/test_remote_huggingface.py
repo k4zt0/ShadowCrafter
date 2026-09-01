@@ -20,7 +20,7 @@ from shadowcrafter.release.remote_huggingface import (
     RemoteReleaseManifest,
     build_ssh_reader_argv,
     load_remote_release_manifest,
-    publish_remote_experimental_release,
+    publish_remote_official_release,
 )
 
 
@@ -68,7 +68,7 @@ def _approval_payload(
         "release_id": "exp-v1",
         "candidate_checkpoint_sha256": checkpoint,
         "remote_inventory_sha256": inventory_sha256,
-        "private_experimental_release_authorized": True,
+        "private_official_release_authorized": True,
         "public_release_authorized": False,
     }
     if name == "license":
@@ -109,7 +109,7 @@ def _model_card(
     metadata = {
         "license": "other",
         "shadowcrafter_release": {
-            "status": "Experimental Release",
+            "status": "Official Release",
             "visibility": "private",
             "commercial_use": False,
             "release_id": "exp-v1",
@@ -118,7 +118,7 @@ def _model_card(
         },
         "shadowcrafter_evaluation": evaluation,
     }
-    body = "# ShadowCrafter Experimental Release\n"
+    body = "# ShadowCrafter Official Release\n"
     if evaluation_status == "not-yet-evaluated":
         body += f"\nEvaluation status: not yet evaluated. {reason}\n"
     return ("---\n" + yaml.safe_dump(metadata, sort_keys=False) + "---\n" + body).encode()
@@ -183,7 +183,7 @@ def _bundle(
         "schema_version": 1,
         "release_id": release_id,
         "repo_id": "KaztoRay/ShadowCrafter-9B",
-        "release_tier": "Experimental Release",
+        "release_tier": "Official Release",
         "visibility": "private",
         "commercial_release": False,
         "parent_commit": parent,
@@ -238,7 +238,7 @@ def _report(*, quality_target_met: bool) -> dict[str, Any]:
             "model_publication_authorized": True,
             "required_visibility": "private",
             "public_publication_authorized": False,
-            "release_tier": "Experimental Release",
+            "release_tier": "Official Release",
             "commercial_use_permitted": False,
         },
     }
@@ -269,7 +269,7 @@ def test_not_yet_evaluated_private_release_is_one_verified_memory_commit(tmp_pat
         return [remote_files[path][:3], remote_files[path][3:]]
 
     before_files = {path.relative_to(tmp_path) for path in tmp_path.rglob("*") if path.is_file()}
-    result = publish_remote_experimental_release(
+    result = publish_remote_official_release(
         manifest_path,
         manifest_sha256=manifest_pin,
         ssh_key=key_path,
@@ -293,7 +293,7 @@ def test_not_yet_evaluated_private_release_is_one_verified_memory_commit(tmp_pat
     assert before_files == after_files
 
 
-def test_measured_accuracy_shortfall_does_not_block_private_experimental_release(
+def test_measured_accuracy_shortfall_does_not_block_private_official_release(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     report = _report(quality_target_met=False)
@@ -307,7 +307,7 @@ def test_measured_accuracy_shortfall_does_not_block_private_experimental_release
     )
     api = FakeApi(parent=manifest.parent_commit, commit="d" * 40)
 
-    result = publish_remote_experimental_release(
+    result = publish_remote_official_release(
         manifest_path,
         manifest_sha256=manifest_pin,
         ssh_key=_key(tmp_path),
@@ -334,7 +334,7 @@ def test_public_repo_or_parent_race_blocks_before_remote_bytes(tmp_path: Path) -
         return b""
 
     with pytest.raises(ValueError, match="not private"):
-        publish_remote_experimental_release(
+        publish_remote_official_release(
             manifest_path,
             manifest_sha256=manifest_pin,
             ssh_key=_key(tmp_path),
@@ -344,7 +344,7 @@ def test_public_repo_or_parent_race_blocks_before_remote_bytes(tmp_path: Path) -
     assert calls == 0
 
     with pytest.raises(ValueError, match="parent commit changed"):
-        publish_remote_experimental_release(
+        publish_remote_official_release(
             manifest_path,
             manifest_sha256=manifest_pin,
             ssh_key=_key(tmp_path),
@@ -361,7 +361,7 @@ def test_post_upload_stream_checksum_mismatch_fails(tmp_path: Path) -> None:
     api = FakeApi(parent=manifest.parent_commit, commit="c" * 40)
 
     with pytest.raises(RuntimeError, match="post-upload Hub checksum mismatch"):
-        publish_remote_experimental_release(
+        publish_remote_official_release(
             manifest_path,
             manifest_sha256=manifest_pin,
             ssh_key=_key(tmp_path),
@@ -492,7 +492,7 @@ def test_manifest_pin_and_release_bound_approvals_fail_closed(tmp_path: Path) ->
     approval["release_id"] = "different-release"
     _write_json(approval_path, approval)
     with pytest.raises(ValueError, match="checksum mismatch"):
-        publish_remote_experimental_release(
+        publish_remote_official_release(
             manifest_path,
             manifest_sha256=manifest_pin,
             ssh_key=_key(tmp_path),
@@ -526,12 +526,12 @@ def test_cli_contract_emits_receipt_without_accepting_a_token(
             file_count=3,
         )
 
-    monkeypatch.setattr(publisher, "publish_remote_experimental_release", fake_publish)
+    monkeypatch.setattr(publisher, "publish_remote_official_release", fake_publish)
     result = CliRunner().invoke(
         app,
         [
             "release",
-            "publish-remote-experimental",
+            "publish-remote-official",
             "--manifest",
             "bundle.json",
             "--manifest-sha256",
@@ -551,12 +551,12 @@ def test_cli_withholds_external_exception_details(monkeypatch: pytest.MonkeyPatc
     def fail_publish(_manifest: Path, **_kwargs: object) -> PublishResult:
         raise RuntimeError("credential-that-must-not-appear")
 
-    monkeypatch.setattr(publisher, "publish_remote_experimental_release", fail_publish)
+    monkeypatch.setattr(publisher, "publish_remote_official_release", fail_publish)
     result = CliRunner().invoke(
         app,
         [
             "release",
-            "publish-remote-experimental",
+            "publish-remote-official",
             "--manifest",
             "bundle.json",
             "--manifest-sha256",

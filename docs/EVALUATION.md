@@ -7,7 +7,7 @@ mutable, contaminated, malformed, unpinned, or aggregate-only evidence fails clo
 Neither ShadowCrafter model currently has a completed prediction bundle that passes this gate.
 Accordingly, the project has not demonstrated a 95% result for ShadowCrafter-9B.
 
-The checked-in protocol supports a **noncommercial, private Experimental Release** evaluation
+The checked-in protocol supports a **noncommercial, private Official Release** evaluation
 against `AI4Sec/cti-bench`. CTIBench is licensed `CC-BY-NC-SA-4.0`; its material may not be used
 as commercial-release evidence or shared through the model repository. A measured score may be
 reported with the exact benchmark identity and limitations. Publication still requires separate
@@ -84,7 +84,7 @@ The evaluator recomputes these three metrics from the frozen answer key and raw 
 
 All three targets are measured both on the complete 5,533-case benchmark and independently on
 every scored CTIBench task. Missing one or all 95% targets does **not** block a private
-`Experimental Release`; the report records `quality_target_met`/`target_95_met: false` and every
+`Official Release`; the report records `quality_target_met`/`target_95_met: false` and every
 shortfall. It cannot be labelled a Qualified Release. The generated report includes, for every
 scope, the sample count, reference/observed class counts, and per-class support, predicted count,
 true positives, precision, recall, and F1.
@@ -125,18 +125,18 @@ python -m shadowcrafter.cli eval gate \
 The report path is created exclusively and is never overwritten. Exit status zero means the
 frozen evaluation, zero-contamination check, and mandatory integrity/provenance/license/privacy/
 safety evidence passed. It does not mean 95% was reached: inspect `quality_target_met` and the
-reported scores. Authorization is limited to a noncommercial **private Experimental Release**;
+reported scores. Authorization is limited to a noncommercial **private Official Release**;
 public visibility and commercial publication remain forbidden.
 
 The workstation-local directory publisher is intentionally disabled because local base/model/
 checkpoint files are forbidden by custody policy. The supported
-`release publish-remote-experimental` path reads each exact manifest-allowlisted remote file into
+`release publish-remote-official` path reads each exact manifest-allowlisted remote file into
 bounded process memory, submits one private Hub commit, and streams that immutable revision back
 for size/SHA-256 verification without a filesystem cache. It resolves Hugging Face credentials
 only from standard local auth sources and never sends them over SSH. The manifest SHA pin,
 parent-commit race check, private visibility, model-card reporting, approvals, provenance,
 integrity, privacy, safety, and license constraints fail closed; the measured 0.95 target remains
-nonblocking for this Experimental tier. See [`REMOTE_WORKFLOW.md`](REMOTE_WORKFLOW.md#9-mirror-a-gated-release-privately)
+nonblocking for this Official tier. See [`REMOTE_WORKFLOW.md`](REMOTE_WORKFLOW.md#9-mirror-a-gated-release-privately)
 for its exact CLI and manifest contract. No uploader may fall back to downloading weights locally.
 
 If a blind example, answer, or detailed failure is used for training, prompt selection,

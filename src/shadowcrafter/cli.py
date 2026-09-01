@@ -19,7 +19,7 @@ knowledge_app = typer.Typer(help="Local security knowledge database")
 eval_app = typer.Typer(help="Evaluation and release gates")
 data_app = typer.Typer(help="Dataset and source snapshot utilities")
 train_app = typer.Typer(help="Model training")
-release_app = typer.Typer(help="Private Experimental Release publication")
+release_app = typer.Typer(help="Private Official Release publication")
 assess_app = typer.Typer(help="Authorized evidence-grounded vulnerability assessment")
 app.add_typer(config_app, name="config")
 app.add_typer(knowledge_app, name="knowledge")
@@ -105,7 +105,7 @@ def run_gate(
             result.report.get("quality_target_met") if result.report is not None else None
         )
         console.print(
-            "[green]private Experimental Release integrity gate passed[/green]; "
+            "[green]private Official Release integrity gate passed[/green]; "
             f"target_95_met={str(quality_target_met).lower()}"
         )
         return
@@ -114,8 +114,8 @@ def run_gate(
     raise typer.Exit(code=1)
 
 
-@release_app.command("publish-remote-experimental")
-def publish_remote_experimental(
+@release_app.command("publish-remote-official")
+def publish_remote_official(
     manifest: Annotated[Path, typer.Option("--manifest")],
     manifest_sha256: Annotated[str, typer.Option("--manifest-sha256")],
     ssh_key: Annotated[Path, typer.Option("--ssh-key")],
@@ -128,11 +128,11 @@ def publish_remote_experimental(
     """Stream an exact remote bundle into one private Hugging Face commit."""
 
     from shadowcrafter.release.remote_huggingface import (
-        publish_remote_experimental_release,
+        publish_remote_official_release,
     )
 
     try:
-        result = publish_remote_experimental_release(
+        result = publish_remote_official_release(
             manifest,
             manifest_sha256=manifest_sha256,
             ssh_key=ssh_key,

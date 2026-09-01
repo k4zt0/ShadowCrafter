@@ -229,7 +229,7 @@ The strict gate recomputes accuracy, balanced accuracy, and macro-F1 from frozen
 reports every class, and independently checks exact CTIBench contamination. It rejects legacy
 caller-supplied aggregate JSON. The current CTIBench protocol is CC-BY-NC-SA-4.0 and therefore
 permits only noncommercial reporting without sharing benchmark material. The 95% target is
-reported as `target_95_met` and is not an Experimental Release blocker. A private Experimental
+reported as `target_95_met` and is not an Official Release blocker. A private Official
 Release still requires passing safety, privacy, license, provenance, artifact-integrity,
 operational, and remote-weight recovery reviews; public visibility is forbidden. Improvements
 may use development evidence only; obtain a new blind test if the existing test influenced
@@ -276,18 +276,18 @@ bound to the repository, release ID, candidate checkpoint hash, and canonical re
 hash. The license approval must prohibit commercial release and benchmark-material sharing.
 
 The model card is part of that inventory. Its YAML front matter must identify the exact private
-`Experimental Release`, repository, release ID and candidate hash. It must either reproduce the
+`Official Release`, repository, release ID and candidate hash. It must either reproduce the
 frozen measured benchmark name/revision/hash/sample count and accuracy, balanced accuracy,
 macro-F1 and `quality_target_met`, or state `not-yet-evaluated`, use null metric values, and give
 the manifest's explicit reason. A measured result below 0.95 remains reportable and does not
-block this Experimental tier. Evaluation integrity, contamination, license, privacy, safety,
+block this Official tier. Evaluation integrity, contamination, license, privacy, safety,
 provenance, visibility and artifact failures remain blocking.
 
 Install the release client dependencies and invoke the publisher from the repository root:
 
 ```bash
 python -m pip install -e '.[release]'
-python -m shadowcrafter.cli release publish-remote-experimental \
+python -m shadowcrafter.cli release publish-remote-official \
   --manifest artifacts/releases/<model>/<release-id>/remote-release-manifest.json \
   --manifest-sha256 <64-lowercase-hex> \
   --ssh-key /absolute/path/to/identity.pem \

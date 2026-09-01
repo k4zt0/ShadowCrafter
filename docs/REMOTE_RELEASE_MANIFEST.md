@@ -1,4 +1,4 @@
-# Remote Experimental Release manifest contract
+# Remote Official Release manifest contract
 
 This contract is intentionally narrow. It supports only this existing private model
 repository:
@@ -22,7 +22,7 @@ sorted lexicographically by `path` with no duplicate path:
   "schema_version": 1,
   "release_id": "<path-safe-immutable-id>",
   "repo_id": "KaztoRay/ShadowCrafter-9B",
-  "release_tier": "Experimental Release",
+  "release_tier": "Official Release",
   "visibility": "private",
   "commercial_release": false,
   "parent_commit": "<current-private-Hub-main-commit>",
@@ -78,7 +78,7 @@ A measured release replaces the evaluation object with:
 That evidence must pass the integrity/contamination/review gate and be bound to this repository
 and checkpoint. Its measured accuracy, balanced accuracy, macro-F1, benchmark identity/revision/
 hash, sample count, and `quality_target_met` must be reproduced exactly in the model card. A false
-quality target is nonblocking only for this private Experimental tier.
+quality target is nonblocking for this private Official tier.
 
 ## Approval records
 
@@ -102,7 +102,7 @@ shape (with its own exact `review` value):
   "release_id": "<release-id>",
   "candidate_checkpoint_sha256": "<candidate-sha256>",
   "remote_inventory_sha256": "<canonical-inventory-sha256>",
-  "private_experimental_release_authorized": true,
+  "private_official_release_authorized": true,
   "public_release_authorized": false
 }
 ```
@@ -118,7 +118,7 @@ manifest-pinned SHA-256 before reading any remote model byte.
 Root `README.md` must contain YAML front matter with `shadowcrafter_release` and
 `shadowcrafter_evaluation`. The release object contains exact `status`, `visibility`,
 `commercial_use`, `release_id`, `repository`, and `candidate_checkpoint_sha256` values. The body
-must prominently say `Experimental Release`.
+must prominently say `Official Release`.
 
 For `not-yet-evaluated`, accuracy, balanced accuracy, macro-F1, and `quality_target_met` are all
 YAML null and the body includes the exact manifest reason. For `measured`, the evaluation object

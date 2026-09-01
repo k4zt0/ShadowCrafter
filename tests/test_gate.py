@@ -281,12 +281,12 @@ def _write_bundle(
             "evaluator_version": "shadowcrafter-ctibench-evaluator-v1",
             "require_clean_git": True,
             "quality_target_is_publication_blocker": False,
-            "authorization_scope": "noncommercial-private-experimental-release",
+            "authorization_scope": "noncommercial-private-official-release",
             "commercial_use_permitted": False,
             "model_publication_authorized": True,
             "required_visibility": "private",
             "public_publication_authorized": False,
-            "release_tier": "Experimental Release",
+            "release_tier": "Official Release",
             "benchmark": {
                 "benchmark_id": "ctibench",
                 "repository_id": "AI4Sec/cti-bench",
@@ -410,13 +410,13 @@ def _write_bundle(
             "license_review_sha256": "9" * 64,
         },
         "publication": {
-            "release_tier": "Experimental Release",
+            "release_tier": "Official Release",
             "visibility": "private",
             "public_release_requested": False,
             "commercial_release_requested": False,
             "quality_target_is_publication_blocker": False,
             "model_card_reports_evaluation": True,
-            "model_card_labels_experimental": True,
+            "model_card_labels_official": True,
             **{
                 f"{review_name}_review": {
                     "passed": True,
@@ -481,7 +481,7 @@ def test_frozen_release_gate_recomputes_metrics_and_class_results(tmp_path: Path
     assert result.report["authorization"]["public_publication_authorized"] is False
 
 
-def test_quality_shortfall_is_reported_but_does_not_block_experimental_release(
+def test_quality_shortfall_is_reported_but_does_not_block_official_release(
     tmp_path: Path,
 ) -> None:
     answers = ["A"] * 95 + ["B"] * 5
@@ -573,7 +573,7 @@ def test_gate_rejects_commercial_or_publication_authorization(tmp_path: Path) ->
     assert "commercial_use_permitted" in result.failures[0]
 
 
-def test_failed_safety_review_blocks_experimental_publication(tmp_path: Path) -> None:
+def test_failed_safety_review_blocks_official_publication(tmp_path: Path) -> None:
     evidence_path, config_path = _write_bundle(tmp_path, answers=["A", "B", "A", "B"])
     safety_path = tmp_path / "safety-review.json"
     safety = json.loads(safety_path.read_text())
