@@ -75,6 +75,14 @@ def _process_start_ticks(pid: int) -> int:
     return int(fields[19])
 
 
+def _detached_environment() -> dict[str, str]:
+    """Pin detached workers to the same immutable source tree as their launcher."""
+    environment = os.environ.copy()
+    environment["PYTHONPATH"] = str(Path(__file__).resolve().parents[2])
+    environment["PYTHONNOUSERSITE"] = "1"
+    return environment
+
+
 def install(job_id: str, root: Path) -> None:
     payload = sys.stdin.buffer.read(_MAX_SPEC_BYTES + 1)
     if len(payload) > _MAX_SPEC_BYTES:
@@ -117,12 +125,15 @@ def _systemd_handle(directory: Path, spec: RemoteJobDocument) -> RemoteHandle | 
     if len(safe_job) > 80:
         safe_job = safe_job[:63] + "-" + hashlib.sha256(safe_job.encode()).hexdigest()[:16]
     unit = f"shadowcrafter-{safe_job}.service"
+    environment = _detached_environment()
     argv = (
         systemd_run,
         "--unit",
         unit,
         "--collect",
         "--no-block",
+        f"--setenv=PYTHONPATH={environment['PYTHONPATH']}",
+        "--setenv=PYTHONNOUSERSITE=1",
         f"--property=RuntimeMaxSec={spec.max_runtime_seconds}",
         "--property=Type=exec",
         sys.executable,
@@ -184,6 +195,7 @@ def _nohup_handle(directory: Path, spec: RemoteJobDocument) -> RemoteHandle:
             stderr=descriptor,
             start_new_session=True,
             close_fds=True,
+            env=_detached_environment(),
         )
     finally:
         os.close(descriptor)
