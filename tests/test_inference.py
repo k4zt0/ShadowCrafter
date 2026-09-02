@@ -3,11 +3,13 @@ from __future__ import annotations
 import hashlib
 import json
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any
 
 import pytest
 import yaml
 
+import shadowcrafter.evaluation.inference as inference_module
 from shadowcrafter.data.ctibench import CTIBenchEvalCase, CTIBenchProvenance, CTIBenchTask
 from shadowcrafter.evaluation.gate import FrozenPrediction
 from shadowcrafter.evaluation.inference import (
@@ -557,3 +559,26 @@ def test_offline_environment_blocks_python_network_and_restores_socket() -> None
     ):
         __import__("socket").create_connection(("example.invalid", 443))
     assert __import__("socket").create_connection is original
+
+
+def test_git_verification_resolves_repository_from_installed_module(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    root = Path(inference_module.__file__).resolve().parents[3]
+    calls: list[Path | None] = []
+
+    def fake_run(arguments: list[str], **kwargs: Any) -> SimpleNamespace:
+        calls.append(kwargs.get("cwd"))
+        if "--show-toplevel" in arguments:
+            return SimpleNamespace(stdout=str(root) + "\n", returncode=0)
+        if "rev-parse" in arguments:
+            return SimpleNamespace(stdout=EVALUATOR_REVISION + "\n", returncode=0)
+        return SimpleNamespace(stdout="", returncode=0)
+
+    monkeypatch.setattr(inference_module.shutil, "which", lambda _name: "/usr/bin/git")
+    monkeypatch.setattr(inference_module.subprocess, "run", fake_run)
+
+    observed = inference_module._verify_git(EVALUATOR_REVISION)
+
+    assert observed == root
+    assert calls[0] == Path(inference_module.__file__).resolve().parent

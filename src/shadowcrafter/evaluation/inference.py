@@ -966,9 +966,11 @@ def _verify_git(revision: str) -> Path:
     git = shutil.which("git")
     if git is None:
         raise InferenceError("Git is unavailable in the inference environment")
+    module_path = Path(__file__).resolve(strict=True)
     try:
         root_result = subprocess.run(  # noqa: S603 - fixed Git argv, resolved executable
             [git, "rev-parse", "--show-toplevel"],
+            cwd=module_path.parent,
             check=True,
             capture_output=True,
             text=True,
@@ -993,7 +995,7 @@ def _verify_git(revision: str) -> Path:
         ).stdout
     except (OSError, subprocess.SubprocessError) as error:
         raise InferenceError("could not verify the source checkout") from error
-    if head != revision or status:
+    if not module_path.is_relative_to(root) or head != revision or status:
         raise InferenceError("inference requires the exact clean source revision")
     return root
 
