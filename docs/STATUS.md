@@ -7,7 +7,7 @@
 
 ## 완료된 기반 작업
 
-- private GitHub `Odytssey/ShadowCrafter`와 9B public Hugging Face 저장소 구성
+- private GitHub `Odytssey/ShadowCrafter`와 9B private Hugging Face 저장소 구성
 - 방어 우선 허용 정책, 데이터 거버넌스, 위협 모델, 릴리스 정책 수립
 - 허가 증빙, exact allowlist, DNS pinning, 읽기 전용 메서드를 강제하는 수동
   HTTP/TLS 블랙박스 점검 프레임 구현
@@ -26,8 +26,8 @@
 - v1.0 28,140건 QLoRA 학습과 LoRA-only adapter 검증 완료
 - CTI-Bench 5,533건 accuracy `46.267847%`, balanced accuracy `11.099532%`,
   macro-F1 `6.748866%`
-- public Hugging Face `KaztoRay/ShadowCrafter-9B`의 `v1.0` 게시 및 익명
-  다운로드/SHA-256 검증 완료
+- Hugging Face `KaztoRay/ShadowCrafter-9B`의 `v1.0`을 private로 전환하고
+  인증 접근 및 익명 접근 차단 검증 완료
 - V2는 V1 28,140건, Juliet 리뷰 64,099건, Juliet CWE-ID view 64,099건,
   ATT&CK 기법-ID view 17,639건의 총 173,977건 corpus로 새 adapter를 학습한다.
 - V2 설정은 LoRA `64/128`, learning rate `8e-5`, warmup `5%`, weight decay `0.01`,
@@ -61,7 +61,7 @@
 2. CWE-ID/ATT&CK-ID 파생 view와 합친 173,977건의 중복·비밀·CTI-Bench 오염 검사
 3. VS Code에서 Colab A100급 런타임을 연결하고 고정 commit으로 QLoRA V2 candidate 학습
 4. 학습 완료 adapter 무결성 검증과 notebook 7번 셀의 CTI-Bench 재평가
-5. 실제 점수와 `95% target met` 상태를 적은 public noncommercial v2.0 업로드
+5. 실제 점수와 `95% target met` 상태를 적은 private noncommercial v2.0 업로드
 6. 모델·체크포인트·전체 원격 프로젝트를 `local_mirror/`에 증분 동기화
 
 실제 95% 달성 여부는 사전에 보장할 수 없습니다. 목표 미달은 실제 점수와 함께

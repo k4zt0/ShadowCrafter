@@ -43,7 +43,7 @@ ShadowCrafter는 다음 원칙을 따릅니다.
 “95% 이상”은 범용 해킹 능력이나 모든 보안 업무에 대한 단일 정확도 약속이
 아닙니다. 사전에 고정한 누수 없는 테스트 세트에서 지정 과제의 목표 달성 여부를
 표시하는 수치입니다. 실제 점수는 높거나 낮은 그대로 보고하며, `0.95` 미달만으로
-public noncommercial official release 업로드를 막지 않습니다. 생성형 보고서, 안전성,
+private noncommercial official release 업로드를 막지 않습니다. 생성형 보고서, 안전성,
 캘리브레이션처럼 accuracy가 부적절한 과제는 별도의 루브릭을 사용합니다.
 
 테스트 세트를 보고 재학습하거나 임계값에 도달할 때까지 같은 테스트 세트에
@@ -59,17 +59,17 @@ public noncommercial official release 업로드를 막지 않습니다. 생성�
 
 사용자의 최신 보관 지침에 따라 기반 모델, 체크포인트, 완료 가중치와 원격 프로젝트
 파일을 `local_mirror/`에 증분 보관합니다. 이 미러는 현재 소스 작업 트리를 덮어쓰지
-않으며 Git에서 강제로 제외됩니다. 원격 학습 서버와 public Hugging Face 릴리스도
+않으며 Git에서 강제로 제외됩니다. 원격 학습 서버와 private Hugging Face 릴리스도
 계속 유지합니다.
 
 | 자산 | 로컬 보관 | 비공개 원격 보관 |
 |---|---|---|
 | 소스, 설정, 문서, 소형 manifest | 이 Git 작업 트리와 로컬 Git 기록 | GitHub `Odytssey/ShadowCrafter` |
-| 기반 모델, 체크포인트, 최종 가중치 | `local_mirror/remote-project/artifacts/` 비공개 미러 | 원격 GPU와 9B public Hugging Face 저장소 |
+| 기반 모델, 체크포인트, 최종 가중치 | `local_mirror/remote-project/artifacts/` 비공개 미러 | 원격 GPU와 9B private Hugging Face 저장소 |
 | 원천·가공 데이터와 악성 샘플 | `data/` 아래의 접근 통제·격리 저장소 | 라이선스와 보안 검토가 허용할 때만 private 저장소 |
-| 평가 결과와 릴리스 증거 | 로컬 평가 번들과 checksum manifest | 필요한 비민감 자료만 9B public 모델 저장소 |
+| 평가 결과와 릴리스 증거 | 로컬 평가 번들과 checksum manifest | 필요한 비민감 자료만 9B private 모델 저장소 |
 
-Hugging Face public 저장소는 `KaztoRay/ShadowCrafter-9B`만 사용합니다. 완성된 모델은 원격에서 hash·안전 로딩·평가를 검증하고 public Hub에 복제한 뒤 로컬 프로젝트 미러에도 내려받습니다. GitHub 소스 저장소는 private로 유지합니다. 로컬 manifest에는 원격 commit과 전체 checksum을 기록합니다. 미러는 백업이 아니라 추가 보관 사본이며 원격 원본을 자동 삭제하지 않습니다.
+Hugging Face 모델 저장소는 `KaztoRay/ShadowCrafter-9B`만 사용하며 private로 유지합니다. 완성된 모델은 원격에서 hash·안전 로딩·평가를 검증하고 인증된 계정으로 private Hub에 복제한 뒤 로컬 프로젝트 미러에도 내려받습니다. GitHub 소스 저장소도 private로 유지합니다. 로컬 manifest에는 원격 commit과 전체 checksum을 기록합니다. 미러는 백업이 아니라 추가 보관 사본이며 원격 원본을 자동 삭제하지 않습니다.
 
 대용량 가중치·데이터·악성 샘플·비밀은 Git에 커밋하지 않습니다. 저장 구조, 동기화 순서, 복구 기준은 [docs/LOCAL_ARTIFACTS.md](docs/LOCAL_ARTIFACTS.md)를 따릅니다.
 
@@ -103,7 +103,7 @@ Colab 임시 저장소에서 하나의 로컬 다운로드 압축본으로 내�
 절차는 [docs/COLAB_TRAINING.md](docs/COLAB_TRAINING.md)를 따릅니다.
 
 Colab에서 내려받은 candidate/checkpoint를 사용자 컴퓨터에 안전하게 가져오고, private
-GitHub 코드 push와 평가 완료 모델의 public Hugging Face 게시를 로컬 인증으로 수행하는
+GitHub 코드 push와 평가 완료 모델의 private Hugging Face 게시를 로컬 인증으로 수행하는
 절차는 [docs/LOCAL_COLAB_SYNC.md](docs/LOCAL_COLAB_SYNC.md)에 기록합니다.
 
 ## 저장소와 릴리스 흐름
@@ -112,7 +112,7 @@ GitHub 코드 push와 평가 완료 모델의 public Hugging Face 게시를 로�
 2. 비공개 GitHub 저장소에 작은 단위로 검토 가능한 커밋을 푸시합니다.
 3. 고정된 데이터·코드·환경 manifest로 승인된 원격 GPU에서 학습합니다.
 4. 원격 가중치를 제자리에서 검증하고 로컬에는 manifest·로그·평가 증거만 회수합니다.
-5. 통과한 모델만 원격에서 9B public Hugging Face 저장소에 업로드하고 다시 검증합니다.
+5. 통과한 모델만 원격에서 9B private Hugging Face 저장소에 업로드하고 인증 상태로 다시 검증합니다.
 6. 로컬 manifest에 Git commit, 데이터 snapshot, 기반 모델 revision, 평가 결과, 원격 commit을 연결합니다.
 
 어떤 원격 서비스에도 업로드하기 전에 해당 계정, 조직, 저장소 가시성이 정확한지 별도로 확인해야 합니다.
@@ -127,4 +127,4 @@ GitHub 코드 push와 평가 완료 모델의 public Hugging Face 게시를 로�
 
 ShadowCrafter is a defensive-first cybersecurity LLM project developed by Odytssey and fine-tuned from Ornith-1.5-9B. Its intended uses include authorized vulnerability and CVE analysis, defensive malware triage, evidence-grounded reporting, security knowledge bases, and human-approved SIEM/SOAR assistance. Offensive evaluation is limited to explicitly authorized, isolated sandboxes; unauthorized access, malware development or deployment, credential theft, persistence, destructive actions, and evasion are prohibited.
 
-The local workstation is the source of truth for code, approved data, manifests, and evaluation evidence. At the operator's direction it also retains an ignored, non-Git mirror of base models, checkpoints, completed weights, and the remote project under `local_mirror/`; approved remote storage and the public model repository remain authoritative publication copies. The GitHub source repository stays private. The “95%” value is a reported target for predeclared, leakage-free, task-specific metrics—not a universal accuracy claim or performance guarantee. The completed version may be published as a clearly labeled public, noncommercial Official Release even below the target; integrity, safety, licensing, privacy, and provenance failures still block publication.
+The local workstation is the source of truth for code, approved data, manifests, and evaluation evidence. At the operator's direction it also retains an ignored, non-Git mirror of base models, checkpoints, completed weights, and the remote project under `local_mirror/`; approved remote storage and the private model repository remain authoritative storage copies. The GitHub source repository stays private. The “95%” value is a reported target for predeclared, leakage-free, task-specific metrics—not a universal accuracy claim or performance guarantee. The completed version may be stored as a clearly labeled private, noncommercial Official Release even below the target; integrity, safety, licensing, privacy, and provenance failures still block upload.

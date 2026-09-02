@@ -52,4 +52,4 @@ training:
   seed: 20260902
 release:
   hf_repo: KaztoRay/ShadowCrafter-9B
-  private: false
+  private: true
