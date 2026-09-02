@@ -226,8 +226,14 @@ def _fixture(tmp_path: Path) -> tuple[Path, str, Path, Path]:
     _write_json(
         snapshot_path,
         {
-            "source": {"repo_id": "AI4Sec/cti-bench", "policy_class": "eval_only"},
-            "license": {"id": "CC-BY-NC-SA-4.0"},
+            "schema_version": 2,
+            "source": {
+                "repo_id": "AI4Sec/cti-bench",
+                "policy_class": "eval_only",
+                "allowed_purposes": ["evaluate"],
+                "type": "huggingface_dataset",
+                "license": {"id": "CC-BY-NC-SA-4.0", "status": "verified"},
+            },
             "upstream_revision": REVISION,
         },
     )
@@ -236,8 +242,14 @@ def _fixture(tmp_path: Path) -> tuple[Path, str, Path, Path]:
     _write_json(
         adapter_manifest_path,
         {
+            "schema_version": 1,
+            "adapter": "ctibench_eval_only_v1",
+            "repo_id": "AI4Sec/cti-bench",
+            "source_id": "ctibench",
+            "source_policy_class": "eval_only",
             "upstream_revision": REVISION,
             "license_id": "CC-BY-NC-SA-4.0",
+            "license": {"id": "CC-BY-NC-SA-4.0", "noncommercial_only": True},
             "dataset_sha256": dataset_sha,
             "output": {"sha256": cases_sha, "record_count": 2},
             "controls": {

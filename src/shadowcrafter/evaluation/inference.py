@@ -850,28 +850,44 @@ def _verify_benchmark(
     snapshot = _json_object(verified.snapshot_manifest.content, "CTIBench snapshot manifest")
     output = adapter.get("output")
     controls = adapter.get("controls")
+    adapter_license = adapter.get("license")
     source = snapshot.get("source")
-    license_info = snapshot.get("license")
-    if not all(isinstance(value, Mapping) for value in (output, controls, source, license_info)):
+    snapshot_license = source.get("license") if isinstance(source, Mapping) else None
+    if not all(
+        isinstance(value, Mapping)
+        for value in (output, controls, adapter_license, source, snapshot_license)
+    ):
         raise InferenceError("CTIBench manifests lack required provenance sections")
     assert isinstance(output, Mapping)
     assert isinstance(controls, Mapping)
+    assert isinstance(adapter_license, Mapping)
     assert isinstance(source, Mapping)
-    assert isinstance(license_info, Mapping)
+    assert isinstance(snapshot_license, Mapping)
     if (
-        adapter.get("upstream_revision") != benchmark.upstream_revision
+        adapter.get("schema_version") != 1
+        or adapter.get("adapter") != "ctibench_eval_only_v1"
+        or adapter.get("repo_id") != benchmark.repository_id
+        or adapter.get("source_id") != "ctibench"
+        or adapter.get("source_policy_class") != "eval_only"
+        or adapter.get("upstream_revision") != benchmark.upstream_revision
         or adapter.get("license_id") != benchmark.license_id
         or adapter.get("dataset_sha256") != benchmark.dataset_sha256
+        or adapter_license.get("id") != benchmark.license_id
+        or adapter_license.get("noncommercial_only") is not True
         or output.get("sha256") != benchmark.cases.sha256
         or output.get("record_count") != benchmark.cases.record_count
         or controls.get("evaluation_only") is not True
         or controls.get("answer_key_isolated") is not True
         or controls.get("trusted_runner_template_required") is not True
         or controls.get("commercial_use_permitted") is not False
+        or snapshot.get("schema_version") != 2
         or source.get("repo_id") != benchmark.repository_id
         or source.get("policy_class") != "eval_only"
+        or source.get("allowed_purposes") != ["evaluate"]
+        or source.get("type") != "huggingface_dataset"
         or snapshot.get("upstream_revision") != benchmark.upstream_revision
-        or license_info.get("id") != benchmark.license_id
+        or snapshot_license.get("id") != benchmark.license_id
+        or snapshot_license.get("status") != "verified"
     ):
         raise InferenceError("CTIBench provenance, license, or isolation contract changed")
     return _load_cases(verified.cases.content, benchmark.cases.record_count)
