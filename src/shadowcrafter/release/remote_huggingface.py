@@ -8,6 +8,7 @@ token is never sent to the remote host.
 
 from __future__ import annotations
 
+import base64
 import hashlib
 import json
 import os
@@ -117,9 +118,14 @@ finally:
         os.close(directory)
 """.strip()
 
-# This string is constant. All remote root/path values travel as JSON on stdin,
-# never as shell text or remote argv. Isolated stdlib Python avoids user/site hooks.
-_REMOTE_COMMAND = "/usr/bin/python3 -I -S -c " + repr(_REMOTE_READER_CODE)
+# This payload is constant. Base64 keeps literal newlines out of OpenSSH's remote
+# shell command while all root/path values still travel only as JSON on stdin.
+# Isolated stdlib Python avoids user/site hooks.
+_REMOTE_READER_PAYLOAD = base64.b64encode(_REMOTE_READER_CODE.encode()).decode("ascii")
+_REMOTE_COMMAND = (
+    "/usr/bin/python3 -I -S -c "
+    f"'import base64;exec(base64.b64decode(\"{_REMOTE_READER_PAYLOAD}\"))'"
+)
 
 
 class _StrictModel(BaseModel):

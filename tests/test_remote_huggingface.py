@@ -401,6 +401,8 @@ def test_ssh_argv_is_batch_only_and_contains_no_hf_token_or_remote_path(tmp_path
     assert "HF_TOKEN" not in " ".join(argv)
     assert manifest.remote_root not in " ".join(argv)
     assert all(entry.path not in " ".join(argv) for entry in manifest.files)
+    assert "\\n" not in argv[-1]
+    assert "\n" not in argv[-1]
 
 
 def test_subprocess_reader_sends_only_bounded_json_on_stdin(

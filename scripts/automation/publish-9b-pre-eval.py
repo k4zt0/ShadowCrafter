@@ -105,7 +105,14 @@ def main() -> int:
             "approvals": approvals,
         }
         manifest_path = release_root / "remote-release-manifest.json"
-        write_json_exclusive(manifest_path, manifest)
+        if manifest_path.exists() or manifest_path.is_symlink():
+            existing = json.loads(_regular(manifest_path).read_text(encoding="utf-8"))
+            if existing != manifest:
+                raise PreEvaluationPublishError(
+                    "existing publication manifest differs from the resumed attempt"
+                )
+        else:
+            write_json_exclusive(manifest_path, manifest)
         result = publish_remote_official_release(
             manifest_path,
             manifest_sha256=sha256_file(manifest_path),
