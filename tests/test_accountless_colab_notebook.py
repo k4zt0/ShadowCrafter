@@ -45,6 +45,9 @@ def test_accountless_colab_notebook_has_no_account_mount_or_private_clone() -> N
     assert "evaluation_result.macro_f1" in source
     assert "evaluation_result.quality_target_met" in source
     assert "7번 정확도 평가를 먼저 완료" in source
+    assert "derive_juliet_cwe_mapping_jsonl" in source
+    assert "derive_attack_technique_id_jsonl" in source
+    assert "173_977" in source
 
 
 def test_accountless_colab_embedded_payloads_match_pins() -> None:
