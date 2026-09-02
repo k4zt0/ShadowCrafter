@@ -19,7 +19,7 @@ knowledge_app = typer.Typer(help="Local security knowledge database")
 eval_app = typer.Typer(help="Evaluation and release gates")
 data_app = typer.Typer(help="Dataset and source snapshot utilities")
 train_app = typer.Typer(help="Model training")
-release_app = typer.Typer(help="Private Official Release publication")
+release_app = typer.Typer(help="Verified local/remote Official Release publication")
 assess_app = typer.Typer(help="Authorized evidence-grounded vulnerability assessment")
 app.add_typer(config_app, name="config")
 app.add_typer(knowledge_app, name="knowledge")
@@ -148,6 +148,58 @@ def publish_remote_official(
         )
         raise typer.Exit(code=1) from None
     console.print_json(json.dumps(result.as_dict(), ensure_ascii=False, sort_keys=True))
+
+
+@release_app.command("publish-local-official")
+def publish_local_official(
+    manifest: Annotated[Path, typer.Option("--manifest")],
+    manifest_sha256: Annotated[str, typer.Option("--manifest-sha256")],
+    artifact_root: Annotated[Path, typer.Option("--artifact-root")],
+    evidence: Annotated[Path | None, typer.Option("--evidence")] = None,
+    gate_config: Annotated[
+        Path,
+        typer.Option("--gate-config"),
+    ] = Path("configs/eval/release-gates.yaml"),
+) -> None:
+    """Publish an evaluated local release using workstation Hugging Face auth."""
+
+    from shadowcrafter.release.remote_huggingface import publish_local_official_release
+
+    try:
+        result = publish_local_official_release(
+            manifest,
+            manifest_sha256=manifest_sha256,
+            artifact_root=artifact_root,
+            evidence_path=evidence,
+            gate_config=gate_config,
+        )
+    except Exception as exc:
+        console.print(
+            "[red]local publication failed closed[/red] "
+            f"({type(exc).__name__}; sensitive details withheld)",
+        )
+        raise typer.Exit(code=1) from None
+    console.print_json(json.dumps(result.as_dict(), ensure_ascii=False, sort_keys=True))
+
+
+@release_app.command("import-colab-export")
+def import_colab_export_command(
+    archive: Annotated[Path, typer.Option("--archive")],
+    destination_root: Annotated[
+        Path,
+        typer.Option("--destination-root"),
+    ] = Path("local_mirror/colab-v2"),
+) -> None:
+    """Verify and import one Colab candidate/checkpoint download locally."""
+
+    from shadowcrafter.release.colab_export import ColabExportError, import_colab_export
+
+    try:
+        imported = import_colab_export(archive, destination_root)
+    except (ColabExportError, OSError, ValueError):
+        console.print("[red]Colab export import failed closed[/red]")
+        raise typer.Exit(code=1) from None
+    console.print_json(json.dumps(imported.as_dict(), ensure_ascii=False, sort_keys=True))
 
 
 @data_app.command("prepare")

@@ -802,3 +802,61 @@ def publish_remote_official_release(
         total_bytes=manifest.total_bytes,
         file_count=len(manifest.files),
     )
+
+
+def publish_local_official_release(
+    manifest_path: Path,
+    *,
+    manifest_sha256: str,
+    artifact_root: Path,
+    gate_config: Path = Path("configs/eval/release-gates.yaml"),
+    evidence_path: Path | None = None,
+    api: Any | None = None,
+    hub_streamer: HubStreamer = _default_hub_stream,
+    operation_factory: OperationFactory = _default_operation,
+) -> PublishResult:
+    """Publish a reviewed release stored on this workstation using only local Hub auth."""
+
+    if artifact_root.is_symlink():
+        raise ValueError("local release root must not be a symlink")
+    resolved_root = artifact_root.resolve(strict=True)
+    if not resolved_root.is_dir():
+        raise ValueError("local release root must be a directory")
+
+    def local_reader(
+        _connection: SSHConnection,
+        _remote_root: str,
+        entry: RemoteFileEntry,
+        _unused_key: Path,
+    ) -> bytes:
+        pure = PurePosixPath(entry.path)
+        if pure.is_absolute() or any(part in {"", ".", ".."} for part in pure.parts):
+            raise ValueError(f"unsafe local release path: {entry.path!r}")
+        current = resolved_root
+        for part in pure.parts:
+            current = current / part
+            if current.is_symlink():
+                raise ValueError(f"local release path contains a symlink: {entry.path!r}")
+        resolved = current.resolve(strict=True)
+        if resolved_root not in resolved.parents or not resolved.is_file():
+            raise ValueError(f"local release path escapes its root: {entry.path!r}")
+        content = _read_bounded_regular_file(
+            resolved,
+            _MAX_FILE_BYTES,
+            f"local release file {entry.path!r}",
+        )
+        if len(content) != entry.size:
+            raise ValueError(f"local release file size differs: {entry.path!r}")
+        return content
+
+    return publish_remote_official_release(
+        manifest_path,
+        manifest_sha256=manifest_sha256,
+        ssh_key=resolved_root,
+        gate_config=gate_config,
+        evidence_path=evidence_path,
+        api=api,
+        remote_reader=local_reader,
+        hub_streamer=hub_streamer,
+        operation_factory=operation_factory,
+    )

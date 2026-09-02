@@ -20,6 +20,7 @@ from shadowcrafter.release.remote_huggingface import (
     RemoteReleaseManifest,
     build_ssh_reader_argv,
     load_remote_release_manifest,
+    publish_local_official_release,
     publish_remote_official_release,
 )
 
@@ -322,6 +323,54 @@ def test_measured_accuracy_shortfall_does_not_block_public_official_release(
     assert len(api.commit_calls) == 1
 
 
+def test_local_workstation_release_uses_verified_local_files(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    report = _report(quality_target_met=False)
+    manifest_path, evidence_path, remote_files = _bundle(tmp_path, measured_report=report)
+    manifest_pin = _manifest_pin(manifest_path)
+    manifest, _ = load_remote_release_manifest(manifest_path, manifest_pin)
+    artifact_root = tmp_path / "downloaded-release"
+    for relative, content in remote_files.items():
+        target = artifact_root / relative
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes(content)
+    monkeypatch.setattr(
+        publisher,
+        "load_and_evaluate",
+        lambda _evidence, _config: GateResult(passed=True, failures=(), report=report),
+    )
+    api = FakeApi(parent=manifest.parent_commit, commit="f" * 40)
+
+    result = publish_local_official_release(
+        manifest_path,
+        manifest_sha256=manifest_pin,
+        artifact_root=artifact_root,
+        evidence_path=evidence_path,
+        api=api,
+        hub_streamer=lambda _repo, _revision, path, _token: [remote_files[path]],
+        operation_factory=lambda path, content: (path, content),
+    )
+
+    assert result.commit_sha == "f" * 40
+    assert result.quality_target_met is False
+    assert dict(api.commit_calls[0]["operations"]) == remote_files
+
+
+def test_local_workstation_release_rejects_linked_artifact_root(tmp_path: Path) -> None:
+    target = tmp_path / "target"
+    target.mkdir()
+    linked = tmp_path / "linked"
+    linked.symlink_to(target, target_is_directory=True)
+
+    with pytest.raises(ValueError, match="symlink"):
+        publish_local_official_release(
+            tmp_path / "unused.json",
+            manifest_sha256="a" * 64,
+            artifact_root=linked,
+        )
+
+
 def test_private_repo_or_parent_race_blocks_before_remote_bytes(tmp_path: Path) -> None:
     manifest_path, _evidence_path, _remote_files = _bundle(tmp_path)
     manifest_pin = _manifest_pin(manifest_path)
@@ -546,6 +595,48 @@ def test_cli_contract_emits_receipt_without_accepting_a_token(
     assert result.exit_code == 0
     assert '"commit_sha": "cccccccccccccccccccccccccccccccccccccccc"' in result.stdout
     assert captured["manifest_sha256"] == "d" * 64
+    assert "token" not in captured
+
+
+def test_local_cli_uses_artifact_root_without_accepting_a_token(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    captured: dict[str, object] = {}
+
+    def fake_publish(manifest: Path, **kwargs: object) -> PublishResult:
+        captured["manifest"] = manifest
+        captured.update(kwargs)
+        return PublishResult(
+            repo_id="KaztoRay/ShadowCrafter-9B",
+            commit_sha="e" * 40,
+            release_id="v2.0",
+            manifest_sha256="d" * 64,
+            evaluation_status="measured",
+            quality_target_met=False,
+            total_bytes=123,
+            file_count=3,
+        )
+
+    monkeypatch.setattr(publisher, "publish_local_official_release", fake_publish)
+    result = CliRunner().invoke(
+        app,
+        [
+            "release",
+            "publish-local-official",
+            "--manifest",
+            "bundle.json",
+            "--manifest-sha256",
+            "d" * 64,
+            "--artifact-root",
+            "downloaded-release",
+            "--evidence",
+            "release-evidence.json",
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert '"commit_sha": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"' in result.stdout
+    assert captured["artifact_root"] == Path("downloaded-release")
     assert "token" not in captured
 
 

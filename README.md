@@ -98,6 +98,10 @@ private GitHub, Hugging Face 계정·토큰 연결 없이 실행합니다. 공�
 내보냅니다. 세션 보존 제한과 절차는 [docs/COLAB_TRAINING.md](docs/COLAB_TRAINING.md)를
 따릅니다.
 
+Colab에서 내려받은 candidate/checkpoint를 사용자 컴퓨터에 안전하게 가져오고, private
+GitHub 코드 push와 평가 완료 모델의 public Hugging Face 게시를 로컬 인증으로 수행하는
+절차는 [docs/LOCAL_COLAB_SYNC.md](docs/LOCAL_COLAB_SYNC.md)에 기록합니다.
+
 ## 저장소와 릴리스 흐름
 
 1. 로컬에서 변경하고 비밀·대용량 산출물이 없는지 검사합니다.

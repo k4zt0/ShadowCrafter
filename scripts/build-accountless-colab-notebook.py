@@ -534,7 +534,13 @@ os.replace(staging_export, EXPORT)
 print('Export:', EXPORT)
 print('SHA-256:', sha256_file(EXPORT))
 print('Size bytes:', EXPORT.stat().st_size)
-display(FileLink(EXPORT.name))"""
+display(FileLink(EXPORT.name))
+print('다운로드 후 사용자 컴퓨터의 ShadowCrafter 디렉터리에서 실행:')
+print(
+    '.venv/bin/shadowcrafter release import-colab-export '
+    f'--archive ~/Downloads/{EXPORT.name} '
+    '--destination-root local_mirror/colab-v2'
+)"""
         ),
     ]
     return {
