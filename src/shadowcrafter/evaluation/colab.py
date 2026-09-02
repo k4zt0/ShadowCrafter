@@ -538,7 +538,11 @@ def evaluate_colab_candidate(
     accuracy = metrics.get("accuracy")
     balanced_accuracy = metrics.get("balanced_accuracy")
     macro_f1 = metrics.get("macro_f1")
-    if not all(isinstance(value, float) for value in (accuracy, balanced_accuracy, macro_f1)):
+    if (
+        not isinstance(accuracy, float)
+        or not isinstance(balanced_accuracy, float)
+        or not isinstance(macro_f1, float)
+    ):
         raise ColabEvaluationError("strict gate report contains invalid metric values")
     return ColabEvaluationResult(
         root=output_root,
