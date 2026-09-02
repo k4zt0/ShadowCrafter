@@ -638,7 +638,7 @@ def _verify_model_config(request: InferenceRequest, content: bytes) -> None:
         or base.get("text_model_class") != request.model.text_model_class
         or base.get("trust_remote_code") is not False
         or release.get("hf_repo") != request.model.model_id
-        or release.get("private") is not False
+        or not isinstance(release.get("private"), bool)
         or training.get("load_in_4bit") is not True
         or training.get("quant_type") != "nf4"
         or training.get("double_quant") is not True

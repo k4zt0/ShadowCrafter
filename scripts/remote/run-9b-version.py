@@ -84,6 +84,11 @@ def _arguments() -> argparse.Namespace:
     parser.add_argument("--source-revision", required=True)
     parser.add_argument("--protocol-revision", required=True)
     parser.add_argument("--checkpoint", type=Path)
+    parser.add_argument(
+        "--stage-before-evaluation",
+        action="store_true",
+        help="Stage a clearly labeled pre-evaluation public release without running CTIBench.",
+    )
     return parser.parse_args()
 
 
@@ -228,7 +233,7 @@ def _inference_request(
     environment_manifest: Path,
     output_dir: Path,
 ) -> dict[str, Any]:
-    config = loop_source / _MODEL_CONFIG_RELATIVE
+    config = candidate_source / _MODEL_CONFIG_RELATIVE
     base_manifest = candidate_source / _BASE_MANIFEST_RELATIVE
     training_manifest = checkpoint / "run-manifest.json"
     gate_config = loop_source / _GATE_CONFIG_RELATIVE
@@ -513,9 +518,12 @@ def _build_evidence(
     return evidence_path, report_path, report
 
 
-def _model_card(version: str, checkpoint_sha: str, report: Mapping[str, Any]) -> bytes:
-    metrics = report["overall"]["metrics"]
-    benchmark = report["benchmark"]
+def _model_card(
+    version: str,
+    checkpoint_sha: str,
+    report: Mapping[str, Any] | None,
+    reason: str | None,
+) -> bytes:
     metadata = {
         "license": "other",
         "shadowcrafter_release": {
@@ -526,7 +534,22 @@ def _model_card(version: str, checkpoint_sha: str, report: Mapping[str, Any]) ->
             "repository": _MODEL_ID,
             "candidate_checkpoint_sha256": checkpoint_sha,
         },
-        "shadowcrafter_evaluation": {
+    }
+    if report is None:
+        if not isinstance(reason, str):
+            raise VersionRunError("pre-evaluation release requires an explicit reason")
+        metadata["shadowcrafter_evaluation"] = {
+            "status": "not-yet-evaluated",
+            "accuracy": None,
+            "balanced_accuracy": None,
+            "macro_f1": None,
+            "quality_target_met": None,
+        }
+        metrics_body = f"Evaluation status: not yet evaluated. {reason}\n"
+    else:
+        metrics = report["overall"]["metrics"]
+        benchmark = report["benchmark"]
+        metadata["shadowcrafter_evaluation"] = {
             "status": "measured",
             "benchmark": benchmark["repository_id"],
             "revision": benchmark["upstream_revision"],
@@ -534,19 +557,21 @@ def _model_card(version: str, checkpoint_sha: str, report: Mapping[str, Any]) ->
             "sample_count": benchmark["sample_count"],
             **metrics,
             "quality_target_met": report["quality_target_met"],
-        },
-    }
-    target = "yes" if report["quality_target_met"] else "no"
+        }
+        target = "yes" if report["quality_target_met"] else "no"
+        metrics_body = (
+            f"Frozen CTIBench accuracy: `{metrics['accuracy']:.6f}`  \n"
+            f"Balanced accuracy: `{metrics['balanced_accuracy']:.6f}`  \n"
+            f"Macro-F1: `{metrics['macro_f1']:.6f}`  \n"
+            f"95% target met: `{target}`\n"
+        )
     body = (
         "# ShadowCrafter-9B Official Release\n\n"
         f"Version: `{version}`  \n"
         "Developed by Odytssey. Fine-tuned from ornith-ai/Ornith-1.5-9B.\n\n"
         "This is a public, noncommercial Official Release for defensive cybersecurity "
         "research. It is not a performance guarantee or authorization for unsanctioned access.\n\n"
-        f"Frozen CTIBench accuracy: `{metrics['accuracy']:.6f}`  \n"
-        f"Balanced accuracy: `{metrics['balanced_accuracy']:.6f}`  \n"
-        f"Macro-F1: `{metrics['macro_f1']:.6f}`  \n"
-        f"95% target met: `{target}`\n"
+        + metrics_body
     )
     return ("---\n" + yaml.safe_dump(metadata, sort_keys=False) + "---\n" + body).encode("utf-8")
 
@@ -595,9 +620,10 @@ def _stage_release(
     version: str,
     checkpoint: Path,
     checkpoint_sha: str,
-    evidence_path: Path,
-    report_path: Path,
-    report: Mapping[str, Any],
+    evidence_path: Path | None,
+    report_path: Path | None,
+    report: Mapping[str, Any] | None,
+    reason: str | None,
     version_root: Path,
 ) -> Path:
     candidate = version_root / "release-candidate"
@@ -609,7 +635,7 @@ def _stage_release(
     flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0)
     descriptor = os.open(card, flags, 0o600)
     with os.fdopen(descriptor, "wb") as handle:
-        handle.write(_model_card(version, checkpoint_sha, report))
+        handle.write(_model_card(version, checkpoint_sha, report, reason))
         handle.flush()
         os.fsync(handle.fileno())
     for source in sorted((checkpoint / "adapter").rglob("*")):
@@ -669,6 +695,27 @@ def _stage_release(
         }
         for name in ("artifact_integrity", "provenance", "license", "privacy", "safety")
     }
+    evaluation: dict[str, Any]
+    if report is None:
+        if evidence_path is not None or report_path is not None or not isinstance(reason, str):
+            raise VersionRunError("invalid pre-evaluation release state")
+        evaluation = {
+            "status": "not-yet-evaluated",
+            "evidence_manifest_sha256": None,
+            "reason": reason,
+            "quality_target_met": None,
+        }
+    else:
+        if evidence_path is None or report_path is None or reason is not None:
+            raise VersionRunError("invalid measured release state")
+        evaluation = {
+            "status": "measured",
+            "evidence_manifest_sha256": _sha256(evidence_path),
+            "reason": None,
+            "quality_target_met": report["quality_target_met"],
+            "target": QUALITY_TARGET,
+            "overall": report["overall"]["metrics"],
+        }
     ready = {
         "schema_version": 1,
         "version": version,
@@ -682,16 +729,10 @@ def _stage_release(
         "files": files,
         "total_bytes": promoted.total_bytes,
         "remote_inventory_sha256": inventory_sha,
-        "evaluation": {
-            "status": "measured",
-            "evidence_manifest_sha256": _sha256(evidence_path),
-            "quality_target_met": report["quality_target_met"],
-            "target": QUALITY_TARGET,
-            "overall": report["overall"]["metrics"],
-        },
-        "remote_evidence_root": str(evidence_path.parent),
-        "remote_evidence_path": str(evidence_path),
-        "remote_gate_report": str(report_path),
+        "evaluation": evaluation,
+        "remote_evidence_root": str(evidence_path.parent) if evidence_path else None,
+        "remote_evidence_path": str(evidence_path) if evidence_path else None,
+        "remote_gate_report": str(report_path) if report_path else None,
         "approvals": approvals,
     }
     ready_path = publication / "ready.json"
@@ -718,7 +759,8 @@ def main() -> int:
             _BASE_MANIFEST_SHA256,
             "candidate base manifest",
         )
-        version_root = _ITERATION_ROOT / args.version
+        release_id = f"{args.version}-pre-eval" if args.stage_before_evaluation else args.version
+        version_root = _ITERATION_ROOT / release_id
         if version_root.exists() or version_root.is_symlink():
             raise VersionRunError("version workspace already exists")
         version_root.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
@@ -730,6 +772,30 @@ def main() -> int:
         checkpoint_sha = _checkpoint_manifest(
             checkpoint, checkpoint_manifest, source.name, args.version
         )
+        if args.stage_before_evaluation:
+            reason = "CTIBench accuracy is scheduled after this integrity-verified artifact upload."
+            ready = _stage_release(
+                version=release_id,
+                checkpoint=checkpoint,
+                checkpoint_sha=checkpoint_sha,
+                evidence_path=None,
+                report_path=None,
+                report=None,
+                reason=reason,
+                version_root=version_root,
+            )
+            print(
+                json.dumps(
+                    {
+                        "version": release_id,
+                        "ready": str(ready),
+                        "target_met": None,
+                        "accuracy": None,
+                    },
+                    sort_keys=True,
+                )
+            )
+            return 0
         environment_manifest = version_root / "environment-manifest.json"
         _environment_manifest(environment_manifest)
         inference_parent = version_root / "inference"
@@ -767,6 +833,7 @@ def main() -> int:
             evidence_path=evidence_path,
             report_path=report_path,
             report=report,
+            reason=None,
             version_root=version_root,
         )
         print(
