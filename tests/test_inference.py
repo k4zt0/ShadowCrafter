@@ -23,6 +23,7 @@ from shadowcrafter.evaluation.inference import (
 
 REVISION = "9237e1636ee3e168fbe5ebdcc1c571de0525e568"
 GIT_REVISION = "5" * 40
+EVALUATOR_REVISION = "7" * 40
 BASE_REVISION = "489cb97981b8654bcfcf30ce1f94ed1b62e07b53"
 
 
@@ -335,7 +336,8 @@ def _fixture(tmp_path: Path) -> tuple[Path, str, Path, Path]:
             "max_cpu_threads": 4,
         },
         "source": {
-            "git_revision": GIT_REVISION,
+            "git_revision": EVALUATOR_REVISION,
+            "candidate_git_revision": GIT_REVISION,
             "require_clean_git": True,
             "environment_manifest": _file_pin(environment_path),
         },
@@ -403,6 +405,7 @@ def test_frozen_inference_writes_gate_compatible_hash_only_evidence(
         (output_dir / "predictions.jsonl").read_bytes()
     )
     assert manifest["inference"]["scores_computed"] is False
+    assert manifest["inference"]["code_revision"] == EVALUATOR_REVISION
     assert manifest["benchmark"]["model_publication_authorized_by_benchmark"] is False
     assert manifest["benchmark"]["raw_examples_logged"] is False
     assert backend.closed

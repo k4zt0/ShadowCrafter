@@ -302,7 +302,8 @@ def _inference_request(
             "max_cpu_threads": 16,
         },
         "source": {
-            "git_revision": candidate_source.name,
+            "git_revision": loop_source.name,
+            "candidate_git_revision": candidate_source.name,
             "require_clean_git": True,
             "environment_manifest": {
                 "path": str(environment_manifest),
@@ -318,12 +319,12 @@ def _inference_request(
     }
 
 
-def _run_inference(request_path: Path, candidate_source: Path) -> None:
-    script = candidate_source / "scripts/remote/run-frozen-inference.py"
+def _run_inference(request_path: Path, evaluator_source: Path) -> None:
+    script = evaluator_source / "scripts/remote/run-frozen-inference.py"
     environment = os.environ.copy()
     environment.update(
         {
-            "PYTHONPATH": str(candidate_source / "src"),
+            "PYTHONPATH": str(evaluator_source / "src"),
             "PYTHONNOUSERSITE": "1",
             "TOKENIZERS_PARALLELISM": "false",
         }
@@ -337,7 +338,7 @@ def _run_inference(request_path: Path, candidate_source: Path) -> None:
             "--request-sha256",
             _sha256(request_path),
         ),
-        cwd=candidate_source,
+        cwd=evaluator_source,
         env=environment,
         check=False,
         timeout=604800,
@@ -429,7 +430,7 @@ def _build_evidence(
         },
         "inference": {
             "evaluator_version": gate["evaluator_version"],
-            "code_revision": candidate_source.name,
+            "code_revision": details["code_revision"],
             "environment_sha256": _sha256(staging / "environment-manifest.json"),
             "prompt_template_sha256": details["prompt_template_sha256"],
             "decoding_config_sha256": details["decoding_config_sha256"],
@@ -829,7 +830,7 @@ def main() -> int:
                 output_dir=inference_output,
             ),
         )
-        _run_inference(request_path, source)
+        _run_inference(request_path, protocol_source)
         evidence_path, report_path, report = _build_evidence(
             version=args.version,
             candidate_source=source,

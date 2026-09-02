@@ -112,6 +112,7 @@ class DecodingLimits(_StrictModel):
 
 class SourceRequest(_StrictModel):
     git_revision: str = Field(pattern=_GIT_SHA_PATTERN)
+    candidate_git_revision: str = Field(pattern=_GIT_SHA_PATTERN)
     require_clean_git: Literal[True]
     environment_manifest: FilePin
 
@@ -660,7 +661,7 @@ def _verify_checkpoint(request: InferenceRequest, content: bytes) -> str:
         adapter_root,
         manifest,
         expected_artifact_id=None,
-        expected_revision=request.source.git_revision,
+        expected_revision=request.source.candidate_git_revision,
         label="checkpoint manifest",
     )
     raw_entries = manifest.get("files")
@@ -734,7 +735,7 @@ def _verify_training_and_adapter(
         or base.get("id") != request.model.base_model_id
         or base.get("revision") != request.model.base_model_revision
         or configuration.get("sha256") != request.model.config.sha256
-        or environment.get("git_revision") != request.source.git_revision
+        or environment.get("git_revision") != request.source.candidate_git_revision
         or invariants.get("push_to_hub") is not False
         or invariants.get("resume_from_checkpoint") is not False
         or adapter.get("safe_serialization") is not True
