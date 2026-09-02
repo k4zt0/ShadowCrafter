@@ -20,7 +20,7 @@ def test_accountless_colab_notebook_compiles_and_requests_a100() -> None:
     cells = notebook["cells"]
     assert isinstance(cells, list)
     code_cells = [cell for cell in cells if cell["cell_type"] == "code"]
-    assert len(code_cells) == 7
+    assert len(code_cells) == 8
     for index, cell in enumerate(code_cells, start=1):
         compile("".join(cell["source"]), f"{NOTEBOOK}#code-{index}", "exec")
 
@@ -39,6 +39,12 @@ def test_accountless_colab_notebook_has_no_account_mount_or_private_clone() -> N
     assert "token=False" in source
     assert "checkpoint_storage='ephemeral'" in source
     assert "HF_HUB_DISABLE_IMPLICIT_TOKEN" in source
+    assert "evaluate_colab_candidate" in source
+    assert "evaluation_result.accuracy" in source
+    assert "evaluation_result.balanced_accuracy" in source
+    assert "evaluation_result.macro_f1" in source
+    assert "evaluation_result.quality_target_met" in source
+    assert "7번 정확도 평가를 먼저 완료" in source
 
 
 def test_accountless_colab_embedded_payloads_match_pins() -> None:

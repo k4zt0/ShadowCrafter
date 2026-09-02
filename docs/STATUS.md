@@ -30,7 +30,7 @@
   다운로드/SHA-256 검증 완료
 - V2는 NIST Juliet 64,099건을 추가한 총 92,239건 corpus로 새 adapter를 학습한다.
 - 공식 VS Code Colab 확장용 accountless notebook, 내장 source/data 검증,
-  임시 checkpoint 완전성 및 로컬 export 구현 완료
+  임시 checkpoint 완전성, CTI-Bench 동결 평가 및 측정 evidence 포함 로컬 export 구현 완료
 
 ## 데이터와 평가
 
@@ -57,7 +57,7 @@
 1. NIST 공식 ZIP과 64,099개 testcase lineage 검증
 2. 기존 corpus와 합친 92,239건의 중복·비밀·CTI-Bench 오염 검사
 3. VS Code에서 Colab A100급 런타임을 연결하고 고정 commit으로 QLoRA V2 candidate 학습
-4. 학습 완료 adapter 무결성 검증과 CTI-Bench 재평가
+4. 학습 완료 adapter 무결성 검증과 notebook 7번 셀의 CTI-Bench 재평가
 5. 실제 점수와 `95% target met` 상태를 적은 public noncommercial v2.0 업로드
 6. 모델·체크포인트·전체 원격 프로젝트를 `local_mirror/`에 증분 동기화
 

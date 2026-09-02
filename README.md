@@ -94,9 +94,10 @@ V2는 공식 Google Colab VS Code 확장(`google.colab`)에서 실행 가능한
 [`ShadowCrafter_V2_Colab.ipynb`](notebooks/ShadowCrafter_V2_Colab.ipynb)도 제공합니다.
 노트북 안에 검증된 최소 Git bundle과 입력 자료를 압축해 포함하므로 Google Drive,
 private GitHub, Hugging Face 계정·토큰 연결 없이 실행합니다. 공개 기반 모델만 익명
-다운로드하고 checkpoint/candidate는 Colab 임시 저장소에서 로컬 다운로드 링크로
-내보냅니다. 세션 보존 제한과 절차는 [docs/COLAB_TRAINING.md](docs/COLAB_TRAINING.md)를
-따릅니다.
+다운로드하고, 학습 완료 후 CTIBench 5,533건에서 accuracy, balanced accuracy,
+macro-F1과 95% 목표 상태를 원시 예측으로 재계산합니다. candidate·평가 evidence·보고서는
+Colab 임시 저장소에서 하나의 로컬 다운로드 압축본으로 내보냅니다. 세션 보존 제한과
+절차는 [docs/COLAB_TRAINING.md](docs/COLAB_TRAINING.md)를 따릅니다.
 
 Colab에서 내려받은 candidate/checkpoint를 사용자 컴퓨터에 안전하게 가져오고, private
 GitHub 코드 push와 평가 완료 모델의 public Hugging Face 게시를 로컬 인증으로 수행하는

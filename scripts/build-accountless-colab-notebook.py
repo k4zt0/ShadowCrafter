@@ -40,6 +40,8 @@ RUNTIME_PATHS = (
     "src",
     "configs",
     "requirements/train-hf.lock.txt",
+    "artifacts/manifests/ctibench-adapter-20260902.json",
+    "artifacts/manifests/ctibench-snapshot-20260902.json",
     "artifacts/manifests/ornith-1.5-9b.json",
 )
 
@@ -253,9 +255,10 @@ print('Restored inputs:', V1_LOCAL, CTI_LOCAL)
 
 - 기반 모델: 공개 ornith-ai/Ornith-1.5-9B exact revision을 토큰 없이 익명 다운로드
 - 내장 학습 자료: v1 28,140건 + 공개 NIST Juliet C/C++ 64,099건 = 92,239건
-- 내장 평가 자료: CTIBench 5,533건은 오염 검사에만 사용하고 학습하지 않음
+- 내장 평가 자료: CTIBench 5,533건은 오염 검사와 학습 후 동결 평가에만 사용
 - 내장 실행 코드와 입력은 복원 전후 SHA-256으로 검증
-- 학습 중 Hub 업로드, telemetry, W&B 보고를 사용하지 않음"""
+- 학습 중 Hub 업로드, telemetry, W&B 보고를 사용하지 않음
+- 학습 후 Accuracy, Balanced Accuracy, Macro-F1 및 95% 목표 달성 여부를 재계산"""
         ),
         _markdown_cell(
             """## 저장 방식과 제한
@@ -266,7 +269,8 @@ print('Restored inputs:', V1_LOCAL, CTI_LOCAL)
 
 학습 완료 또는 세션 종료 전에 마지막 export 셀을 실행해 candidate/checkpoint 압축본을
 로컬로 다운로드하세요. 기반 모델 다운로드에는 공개 Hugging Face HTTPS가 필요하지만
-HF_TOKEN, 로그인, repository 연동은 사용하지 않습니다."""
+HF_TOKEN, 로그인, repository 연동은 사용하지 않습니다. 완료된 candidate는 7번 평가를
+통과해야 8번 셀에서 모델·원시 예측·평가 보고서를 함께 내보낼 수 있습니다."""
         ),
         _code_cell(
             """# 1. Colab GPU 및 임시 작업공간 확인
@@ -512,7 +516,40 @@ print(json.dumps({
 }, indent=2, sort_keys=True))"""
         ),
         _code_cell(
-            """# 7. candidate 또는 최신 checkpoint를 계정 연결 없이 로컬 다운로드
+            """# 7. CTIBench 5,533건 동결 추론 및 정확도 재계산
+from shadowcrafter.evaluation.colab import evaluate_colab_candidate
+
+if 'FINAL_DIR' not in globals() or not FINAL_DIR.is_dir():
+    raise RuntimeError('6번 학습을 완료해 immutable candidate를 먼저 생성하세요.')
+EVALUATION_ID = f'shadowcrafter-9b-v2.0-{identity}-{uuid.uuid4().hex[:8]}'
+EVALUATION_DIR = SESSION_ROOT / 'evaluations' / EVALUATION_ID
+evaluation_result = evaluate_colab_candidate(
+    candidate_dir=FINAL_DIR,
+    base_model_dir=BASE_MODEL,
+    model_config_path=CONFIG,
+    base_model_manifest_path=BASE_MANIFEST,
+    cases_path=CTI_LOCAL,
+    adapter_manifest_path=(
+        REPO_DIR / 'artifacts/manifests/ctibench-adapter-20260902.json'
+    ),
+    snapshot_manifest_path=(
+        REPO_DIR / 'artifacts/manifests/ctibench-snapshot-20260902.json'
+    ),
+    gate_config_path=REPO_DIR / 'configs/eval/release-gates.yaml',
+    training_path=TRAIN,
+    prepared_training_manifest_path=DATA_MANIFEST,
+    source_revision=SOURCE_REVISION,
+    evaluation_id=EVALUATION_ID,
+    output_root=EVALUATION_DIR,
+)
+print(json.dumps(evaluation_result.as_dict(), indent=2, sort_keys=True))
+print('Accuracy:', f'{evaluation_result.accuracy:.6%}')
+print('Balanced accuracy:', f'{evaluation_result.balanced_accuracy:.6%}')
+print('Macro-F1:', f'{evaluation_result.macro_f1:.6%}')
+print('95% target met:', evaluation_result.quality_target_met)"""
+        ),
+        _code_cell(
+            """# 8. candidate/checkpoint와 측정 결과를 계정 연결 없이 로컬 다운로드
 import os, tarfile, uuid
 from IPython.display import FileLink, display
 
@@ -521,6 +558,12 @@ if 'FINAL_DIR' not in globals() or 'CHECKPOINT_ROOT' not in globals():
 if FINAL_DIR.is_dir():
     export_source = FINAL_DIR
     export_kind = 'candidate'
+    if (
+        'EVALUATION_DIR' not in globals()
+        or not EVALUATION_DIR.is_dir()
+        or not (EVALUATION_DIR / 'gate-report.json').is_file()
+    ):
+        raise RuntimeError('완료된 candidate는 7번 정확도 평가를 먼저 완료해야 합니다.')
 elif CHECKPOINT_ROOT.is_dir():
     export_source = CHECKPOINT_ROOT
     export_kind = 'checkpoints'
@@ -530,6 +573,12 @@ EXPORT = Path('/content') / f'ShadowCrafter-V2-{export_kind}-{identity}.tar.gz'
 staging_export = EXPORT.parent / f'.{EXPORT.name}.tmp-{uuid.uuid4().hex}'
 with tarfile.open(staging_export, 'w:gz') as archive:
     archive.add(export_source, arcname=export_source.name, recursive=True)
+    if export_kind == 'candidate':
+        archive.add(
+            EVALUATION_DIR,
+            arcname=f'{export_source.name}/evaluation/{EVALUATION_DIR.name}',
+            recursive=True,
+        )
 os.replace(staging_export, EXPORT)
 print('Export:', EXPORT)
 print('SHA-256:', sha256_file(EXPORT))
