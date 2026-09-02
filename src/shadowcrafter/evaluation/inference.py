@@ -729,20 +729,26 @@ def _verify_training_and_adapter(
     assert isinstance(invariants, Mapping)
     assert isinstance(observation, Mapping)
     assert isinstance(environment, Mapping)
-    if (
-        run.get("schema_version") != 1
-        or project.get("name") != request.model.family
+    common_invalid = (
+        project.get("name") != request.model.family
         or base.get("id") != request.model.base_model_id
         or base.get("revision") != request.model.base_model_revision
         or configuration.get("sha256") != request.model.config.sha256
         or environment.get("git_revision") != request.source.candidate_git_revision
         or invariants.get("push_to_hub") is not False
-        or invariants.get("resume_from_checkpoint") is not False
         or adapter.get("safe_serialization") is not True
         or adapter.get("lora_only") is not True
         or adapter.get("finite") is not True
         or observation.get("lora_parameters_changed") is not True
-    ):
+    )
+    schema_version = run.get("schema_version")
+    if schema_version == 1:
+        lineage_invalid = invariants.get("resume_from_checkpoint") is not False
+    elif schema_version == 2:
+        lineage_invalid = _invalid_colab_training_lineage(run, request)
+    else:
+        raise InferenceError("unsupported training run manifest schema")
+    if common_invalid or lineage_invalid:
         raise InferenceError("training run manifest does not authorize this adapter")
     adapter_path = Path(str(adapter.get("path", "")))
     try:
@@ -772,6 +778,69 @@ def _verify_training_and_adapter(
         or adapter_config.get("use_dora") not in (None, False)
     ):
         raise InferenceError("PEFT adapter configuration differs from its audited base pin")
+
+
+def _invalid_colab_training_lineage(
+    run: Mapping[str, Any], request: InferenceRequest
+) -> bool:
+    """Return whether a resumable Colab final candidate lacks an auditable lineage."""
+
+    invariants = run.get("effective_training_invariants")
+    lineage = run.get("checkpoint_lineage")
+    inputs = run.get("input")
+    if not all(isinstance(value, Mapping) for value in (invariants, lineage, inputs)):
+        return True
+    assert isinstance(invariants, Mapping)
+    assert isinstance(lineage, Mapping)
+    assert isinstance(inputs, Mapping)
+    train = inputs.get("train")
+    dataset_manifest = inputs.get("dataset_manifest")
+    if not isinstance(train, Mapping) or not isinstance(dataset_manifest, Mapping):
+        return True
+    required_invariants = {
+        "checkpoint_saving": True,
+        "checkpoint_integrity_markers": True,
+        "clean_detached_source_snapshot": True,
+        "completion_only_loss": True,
+        "enable_thinking": False,
+        "packing": False,
+        "reporting": False,
+    }
+    if (
+        run.get("version") != "v2.0-colab-candidate"
+        or any(invariants.get(name) is not value for name, value in required_invariants.items())
+        or invariants.get("checkpoint_storage") not in {"ephemeral", "private_drive"}
+        or lineage.get("markers_are_integrity_manifests_not_signatures") is not True
+    ):
+        return True
+    resumed = invariants.get("resume_from_checkpoint")
+    marker = lineage.get("resumed_marker")
+    resumed_from = lineage.get("resumed_from")
+    if resumed is False:
+        return marker is not None or resumed_from is not None
+    if resumed is not True or not isinstance(marker, Mapping) or not isinstance(resumed_from, str):
+        return True
+    binding = marker.get("binding")
+    global_step = marker.get("global_step")
+    configuration = run.get("configuration")
+    if not isinstance(binding, Mapping) or not isinstance(configuration, Mapping):
+        return True
+    expected_binding = {
+        "source_revision": request.source.candidate_git_revision,
+        "config_sha256": configuration.get("sha256"),
+        "train_sha256": train.get("sha256"),
+        "dataset_manifest_sha256": dataset_manifest.get("sha256"),
+        "dataset_sha256": dataset_manifest.get("dataset_sha256"),
+    }
+    return (
+        marker.get("schema_version") != 1
+        or not isinstance(global_step, int)
+        or isinstance(global_step, bool)
+        or global_step < 1
+        or dict(binding) != expected_binding
+        or not isinstance(marker.get("files"), list)
+        or not marker.get("files")
+    )
 
 
 def _load_gate_config(content: bytes) -> StrictReleaseGateConfig:

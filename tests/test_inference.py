@@ -136,7 +136,9 @@ def _environment() -> RuntimeEnvironment:
     )
 
 
-def _fixture(tmp_path: Path) -> tuple[Path, str, Path, Path]:
+def _fixture(
+    tmp_path: Path, *, resumed_colab_candidate: bool = False
+) -> tuple[Path, str, Path, Path]:
     model_config_path = tmp_path / "model.yaml"
     model_config_path.write_text(
         yaml.safe_dump(
@@ -184,34 +186,78 @@ def _fixture(tmp_path: Path) -> tuple[Path, str, Path, Path]:
     _write_json(adapter_root / "adapter_config.json", adapter_config)
     (adapter_root / "adapter_model.safetensors").write_bytes(b"safe fixture tensor bytes")
     run_manifest_path = checkpoint_root / "run-manifest.json"
-    _write_json(
-        run_manifest_path,
-        {
-            "schema_version": 1,
-            "project": {"name": "ShadowCrafter-9B"},
-            "base_model": {
-                "id": "ornith-ai/Ornith-1.5-9B",
-                "revision": BASE_REVISION,
-            },
-            "configuration": {"sha256": _sha(model_config_path.read_bytes())},
-            "effective_training_invariants": {
-                "push_to_hub": False,
-                "resume_from_checkpoint": False,
-            },
-            "training_observation": {"lora_parameters_changed": True},
-            "adapter": {
-                "path": str(adapter_root),
-                "adapter_config_sha256": _sha((adapter_root / "adapter_config.json").read_bytes()),
-                "adapter_weights_sha256": _sha(
-                    (adapter_root / "adapter_model.safetensors").read_bytes()
-                ),
-                "safe_serialization": True,
-                "lora_only": True,
-                "finite": True,
-            },
-            "environment": {"git_revision": GIT_REVISION},
+    run_manifest: dict[str, Any] = {
+        "schema_version": 1,
+        "project": {"name": "ShadowCrafter-9B"},
+        "base_model": {
+            "id": "ornith-ai/Ornith-1.5-9B",
+            "revision": BASE_REVISION,
         },
-    )
+        "configuration": {"sha256": _sha(model_config_path.read_bytes())},
+        "effective_training_invariants": {
+            "push_to_hub": False,
+            "resume_from_checkpoint": False,
+        },
+        "training_observation": {"lora_parameters_changed": True},
+        "adapter": {
+            "path": str(adapter_root),
+            "adapter_config_sha256": _sha((adapter_root / "adapter_config.json").read_bytes()),
+            "adapter_weights_sha256": _sha(
+                (adapter_root / "adapter_model.safetensors").read_bytes()
+            ),
+            "safe_serialization": True,
+            "lora_only": True,
+            "finite": True,
+        },
+        "environment": {"git_revision": GIT_REVISION},
+    }
+    if resumed_colab_candidate:
+        config_sha = _sha(model_config_path.read_bytes())
+        train_sha = "a" * 64
+        training_manifest_sha = "b" * 64
+        dataset_sha = "c" * 64
+        run_manifest.update(
+            {
+                "schema_version": 2,
+                "version": "v2.0-colab-candidate",
+                "input": {
+                    "train": {"sha256": train_sha},
+                    "dataset_manifest": {
+                        "sha256": training_manifest_sha,
+                        "dataset_sha256": dataset_sha,
+                    },
+                },
+                "effective_training_invariants": {
+                    "push_to_hub": False,
+                    "resume_from_checkpoint": True,
+                    "checkpoint_saving": True,
+                    "checkpoint_integrity_markers": True,
+                    "checkpoint_storage": "ephemeral",
+                    "clean_detached_source_snapshot": True,
+                    "completion_only_loss": True,
+                    "enable_thinking": False,
+                    "packing": False,
+                    "reporting": False,
+                },
+                "checkpoint_lineage": {
+                    "resumed_from": "/content/checkpoints/checkpoint-100",
+                    "resumed_marker": {
+                        "schema_version": 1,
+                        "global_step": 100,
+                        "binding": {
+                            "source_revision": GIT_REVISION,
+                            "config_sha256": config_sha,
+                            "train_sha256": train_sha,
+                            "dataset_manifest_sha256": training_manifest_sha,
+                            "dataset_sha256": dataset_sha,
+                        },
+                        "files": [{"path": "trainer_state.json"}],
+                    },
+                    "markers_are_integrity_manifests_not_signatures": True,
+                },
+            }
+        )
+    _write_json(run_manifest_path, run_manifest)
     checkpoint_manifest_path = tmp_path / "checkpoint-manifest.json"
     _write_json(
         checkpoint_manifest_path,
@@ -424,6 +470,27 @@ def test_frozen_inference_writes_gate_compatible_hash_only_evidence(
     assert all("answer" not in message for batch in backend.messages for message in batch)
     assert (output_dir.stat().st_mode & 0o777) == 0o500
     assert ((output_dir / "predictions.jsonl").stat().st_mode & 0o777) == 0o400
+
+
+def test_frozen_inference_accepts_integrity_bound_resumed_colab_candidate(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    request_path, request_sha, output_dir, _ = _fixture(
+        tmp_path, resumed_colab_candidate=True
+    )
+    monkeypatch.setattr(
+        "shadowcrafter.evaluation.inference._verify_git", lambda _revision: tmp_path
+    )
+
+    manifest = run_frozen_inference(
+        request_path,
+        request_sha,
+        backend_factory=lambda _request: FakeBackend(["A", "B"]),
+        environment_observer=_environment,
+    )
+
+    assert manifest["predictions"]["record_count"] == 2
+    assert (output_dir / "predictions.jsonl").is_file()
 
 
 def test_existing_output_refuses_resume_before_backend_load(
