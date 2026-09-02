@@ -7,8 +7,10 @@ from shadowcrafter.training.colab import (
     ColabCheckpointBinding,
     ColabTrainingError,
     latest_complete_checkpoint,
+    train_resumable_colab,
     write_checkpoint_marker,
 )
+from shadowcrafter.training.training_safety import TrainingPins
 
 
 def _binding(suffix: str = "a") -> ColabCheckpointBinding:
@@ -74,3 +76,29 @@ def test_colab_checkpoint_marker_rejects_other_training_lineage(tmp_path: Path) 
 
     with pytest.raises(ColabTrainingError, match="binding"):
         latest_complete_checkpoint(root, _binding("b"))
+
+
+def test_colab_training_rejects_unknown_checkpoint_storage(tmp_path: Path) -> None:
+    pins = TrainingPins(
+        config_sha256="a" * 64,
+        train_sha256="b" * 64,
+        validation_sha256=None,
+        dataset_manifest_sha256="c" * 64,
+        registry_sha256="d" * 64,
+        git_revision="e" * 40,
+    )
+
+    with pytest.raises(ColabTrainingError, match="checkpoint_storage"):
+        train_resumable_colab(
+            config_path=tmp_path / "config.yaml",
+            train_path=tmp_path / "train.jsonl",
+            dataset_manifest_path=tmp_path / "manifest.json",
+            registry_path=tmp_path / "sources.yaml",
+            base_model_path=tmp_path / "model",
+            base_model_manifest_path=tmp_path / "model-manifest.json",
+            base_model_manifest_sha256="f" * 64,
+            checkpoint_root=tmp_path / "checkpoints",
+            final_dir=tmp_path / "final",
+            pins=pins,
+            checkpoint_storage="external",  # type: ignore[arg-type]
+        )

@@ -14,7 +14,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from importlib.metadata import version as package_version
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 from shadowcrafter.data.manifest import sha256_file, write_json_exclusive
 from shadowcrafter.training.sft import (
@@ -285,6 +285,7 @@ def _final_manifest(
     resumed_checkpoint: Path | None,
     resumed_marker: Mapping[str, Any] | None,
     save_steps: int,
+    checkpoint_storage: Literal["private_drive", "ephemeral"],
 ) -> dict[str, Any]:
     return {
         "schema_version": 2,
@@ -340,7 +341,9 @@ def _final_manifest(
             "checkpoint_saving": True,
             "checkpoint_save_steps": save_steps,
             "checkpoint_integrity_markers": True,
-            "trusted_private_drive_required": True,
+            "checkpoint_storage": checkpoint_storage,
+            "checkpoint_persistence_guaranteed": checkpoint_storage == "private_drive",
+            "trusted_private_drive_required": checkpoint_storage == "private_drive",
             "clean_detached_source_snapshot": True,
         },
         "checkpoint_lineage": {
@@ -374,13 +377,16 @@ def train_resumable_colab(
     pins: TrainingPins,
     save_steps: int = 100,
     save_total_limit: int = 3,
+    checkpoint_storage: Literal["private_drive", "ephemeral"] = "private_drive",
 ) -> dict[str, Any]:
-    """Train with private-Drive resume checkpoints and publish one verified adapter."""
+    """Train with integrity-bound resume checkpoints and publish one verified adapter."""
 
     if not 10 <= save_steps <= 10_000:
         raise ColabTrainingError("save_steps must be between 10 and 10,000")
     if not 2 <= save_total_limit <= 10:
         raise ColabTrainingError("save_total_limit must be between 2 and 10")
+    if checkpoint_storage not in {"private_drive", "ephemeral"}:
+        raise ColabTrainingError("checkpoint_storage must be private_drive or ephemeral")
     if final_dir.exists() or final_dir.is_symlink():
         raise ColabTrainingError("final Colab candidate directory already exists")
     _assert_runtime()
@@ -524,6 +530,7 @@ def train_resumable_colab(
                 resumed_checkpoint=resume_path,
                 resumed_marker=resume_marker,
                 save_steps=save_steps,
+                checkpoint_storage=checkpoint_storage,
             )
             manifest["configuration"] = {
                 "path": str(config_path),
