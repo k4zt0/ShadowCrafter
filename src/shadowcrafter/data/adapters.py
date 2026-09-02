@@ -13,7 +13,7 @@ from collections.abc import Mapping, Sequence
 from datetime import UTC, datetime
 from enum import StrEnum
 from html.parser import HTMLParser
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Any
 from xml.etree import ElementTree as ET
 
@@ -25,7 +25,7 @@ from shadowcrafter.data.hygiene import (
     contains_executable_binary_payload,
     record_contains_raw_binary,
 )
-from shadowcrafter.data.manifest import sha256_file, write_json_exclusive
+from shadowcrafter.data.manifest import canonical_json_sha256, sha256_file, write_json_exclusive
 from shadowcrafter.data.registry import (
     ContentKind,
     DataSource,
@@ -49,6 +49,16 @@ _MAX_ARCHIVE_ENTRIES = 64
 _MAX_ARCHIVE_COMPRESSION_RATIO = 100
 _MAX_RULE_FILE_BYTES = 1024 * 1024
 _MAX_RULE_TREE_BYTES = 256 * 1024 * 1024
+_JULIET_ARCHIVE_SHA256 = "ada9d7e1c323d283446df3f55bdee0d00bda1fed786785fe98764d58688f38eb"
+_JULIET_CASE_COUNT = 64_099
+_JULIET_MAX_ARCHIVE_ENTRIES = 150_000
+_JULIET_MAX_UNCOMPRESSED_BYTES = 2 * 1024 * 1024 * 1024
+_JULIET_MAX_ENTRY_BYTES = 512 * 1024 * 1024
+_JULIET_MAX_CODE_CHARS = 12_000
+_JULIET_CASE = re.compile(
+    r"^(?P<base>CWE(?P<cwe>[0-9]+)_(?P<weakness>.+?)__(?P<scenario>.+)_(?P<variant>[0-9]{2}))"
+    r"(?:[a-z]|_(?:bad|goodB2G|goodG2B|good[0-9]+))?$"
+)
 _BLOCKED_MARKUP = re.compile(r"(?is)<(?:[A-Za-z0-9_-]+:)?(?:script|iframe|object|embed|code)\b|```")
 _ACTIONABLE_PAYLOAD = (
     re.compile(r"(?im)^\s*(?:curl|wget|powershell|pwsh|cmd\.exe|bash|sh)\s+[-/]"),
@@ -1029,6 +1039,285 @@ def _assert_unique_output(records: list[SecurityRecord]) -> None:
             raise ValueError(f"adapter produced conflicting record id: {record.record_id}")
         else:
             raise ValueError(f"adapter produced duplicate record id: {record.record_id}")
+
+
+def _juliet_excerpt(text: str, budget: int) -> tuple[str, bool]:
+    normalized = text.replace("\r\n", "\n").replace("\r", "\n").strip()
+    if len(normalized) <= budget:
+        return normalized, False
+    marker = "\n/* source middle omitted by bounded adapter */\n"
+    available = budget - len(marker)
+    if available < 256:
+        raise ValueError("Juliet source excerpt budget is too small")
+    head = max(1, available * 2 // 3)
+    return f"{normalized[:head]}{marker}{normalized[-(available - head) :]}", True
+
+
+def _juliet_record(
+    *,
+    source: DataSource,
+    upstream_revision: str,
+    retrieved_at: datetime,
+    group_key: str,
+    entries: Sequence[zipfile.ZipInfo],
+    archive: zipfile.ZipFile,
+) -> SecurityRecord:
+    match = _JULIET_CASE.fullmatch(group_key)
+    if match is None:
+        raise ValueError(f"invalid Juliet test-case key: {group_key}")
+    file_budget = max(512, (_JULIET_MAX_CODE_CHARS - 512) // len(entries))
+    excerpts: list[str] = []
+    excerpt_hash = hashlib.sha256()
+    truncated = False
+    source_files: list[str] = []
+    for entry in entries:
+        content = archive.read(entry)
+        if len(content) != entry.file_size:
+            raise ValueError(f"Juliet source entry changed while reading: {entry.filename}")
+        try:
+            text = content.decode("utf-8")
+        except UnicodeDecodeError as exc:
+            raise ValueError(f"Juliet source is not UTF-8: {entry.filename}") from exc
+        if "\x00" in text or contains_executable_binary_payload(text):
+            raise ValueError(
+                f"Juliet source contains a prohibited binary payload: {entry.filename}"
+            )
+        excerpt, shortened = _juliet_excerpt(text, file_budget)
+        truncated = truncated or shortened
+        source_files.append(entry.filename)
+        excerpt_hash.update(entry.filename.encode())
+        excerpt_hash.update(b"\0")
+        excerpt_hash.update(content)
+        excerpts.append(f"FILE {PurePosixPath(entry.filename).name}\n{excerpt}")
+
+    cwe = match.group("cwe")
+    weakness = " ".join(match.group("weakness").split("_"))
+    scenario = " ".join(match.group("scenario").split("_"))
+    variant = match.group("variant")
+    code = "\n\n".join(excerpts)
+    question = (
+        "Perform a defensive static review of this non-executable NIST Juliet C/C++ "
+        "test-case family. Identify the weakness and explain how the source-labeled bad "
+        "paths differ from the source-labeled good paths. Do not compile or run it.\n\n"
+        f"{code}"
+    )
+    answer = (
+        f"Classification: CWE-{cwe} ({weakness}). Scenario: {scenario}; Juliet flow "
+        f"variant {variant}. Paths or functions labeled bad are the vulnerable comparison "
+        "variants; paths labeled good, goodG2B, or goodB2G are the controlled remediation "
+        "comparisons supplied by the suite. Trace the complete source-to-sink flow across "
+        f"the listed files, verify the bounds, validation, lifetime, or control required by "
+        f"CWE-{cwe}, and prefer the source-provided good path. Treat this as a static test "
+        "case and confirm any remediation in the real project context."
+    )
+    record_key = group_key
+    record = SecurityRecord(
+        record_id=f"nist-juliet-sard:{_safe_identifier(record_key)}",
+        task=TaskType.SECURE_CODE_REVIEW,
+        risk_tier=RiskTier.DEFENSIVE,
+        language="en",
+        messages=[
+            Message(role="user", content=question),
+            Message(role="assistant", content=answer),
+        ],
+        labels={
+            "record_kind": "nist_juliet_cpp_test_case",
+            "cwe_id": f"CWE-{cwe}",
+            "weakness_name": weakness,
+            "scenario": scenario,
+            "flow_variant": variant,
+            "suite_version": "1.3",
+            "source_files": source_files,
+            "source_file_count": len(source_files),
+            "source_excerpt_truncated": truncated,
+            "source_excerpt_sha256": excerpt_hash.hexdigest(),
+            "source_grounded": True,
+            "generation_method": "deterministic_source_template",
+            "model_generated": False,
+            "requires_human_review": True,
+        },
+        provenance=Provenance(
+            source_id=source.id,
+            source_url=str(source.url),
+            license=source.license.id,
+            retrieved_at=retrieved_at.astimezone(UTC),
+            upstream_revision=upstream_revision,
+            record_key=record_key,
+            content_sha256="0" * 64,
+        ),
+        split_group=f"nist-juliet-sard:{_safe_identifier(record_key)}",
+        benchmark_holdout=False,
+        quality_score=0.9,
+    )
+    record.provenance.content_sha256 = record.canonical_hash()
+    if record_contains_raw_binary(record):
+        raise ValueError(f"Juliet record contains a prohibited binary payload: {group_key}")
+    return record
+
+
+def canonicalize_nist_juliet(
+    archive_path: Path,
+    output_path: Path,
+    *,
+    upstream_revision: str,
+    retrieved_at: datetime,
+    registry_path: Path = Path("configs/data/sources.yaml"),
+    expected_archive_sha256: str = _JULIET_ARCHIVE_SHA256,
+    expected_case_count: int = _JULIET_CASE_COUNT,
+) -> dict[str, Any]:
+    """Convert the pinned NIST Juliet C/C++ ZIP into bounded static-review records."""
+
+    if archive_path.is_symlink() or not archive_path.is_file():
+        raise ValueError("Juliet archive must be a non-linked regular file")
+    if retrieved_at.tzinfo is None:
+        raise ValueError("retrieved_at must be timezone-aware")
+    if not upstream_revision.strip():
+        raise ValueError("upstream_revision must not be blank")
+    if not re.fullmatch(r"[0-9a-f]{64}", expected_archive_sha256):
+        raise ValueError("expected Juliet archive SHA-256 is invalid")
+    if expected_case_count < 1 or expected_case_count > _MAX_OUTPUT_RECORDS:
+        raise ValueError("expected Juliet case count is outside the adapter limit")
+    archive_sha256 = sha256_file(archive_path)
+    if archive_sha256 != expected_archive_sha256:
+        raise ValueError("Juliet archive does not match the immutable SHA-256 pin")
+
+    registry = load_registry(registry_path)
+    source = registry.require_purpose("nist-juliet-sard", Purpose.TRAIN)
+    if (
+        source.policy_class.value != "allow_train"
+        or source.license.id != "CC0-1.0"
+        or source.safety.content_kind != ContentKind.SECURE_CODE
+        or source.safety.raw_malware_binaries
+        or not source.safety.executable_content
+    ):
+        raise ValueError("NIST Juliet source policy or license contract changed")
+
+    manifest_path = output_path.with_suffix(output_path.suffix + ".manifest.json")
+    existing = [str(path) for path in (output_path, manifest_path) if path.exists()]
+    if existing:
+        raise FileExistsError(f"refusing to overwrite canonical Juliet artifacts: {existing}")
+
+    groups: dict[str, list[zipfile.ZipInfo]] = {}
+    inventory: list[dict[str, Any]] = []
+    total_uncompressed = 0
+    selected_count = 0
+    ignored_source_count = 0
+    with zipfile.ZipFile(archive_path) as archive:
+        entries = archive.infolist()
+        if not entries or len(entries) > _JULIET_MAX_ARCHIVE_ENTRIES:
+            raise ValueError("Juliet archive entry count is outside the allowed range")
+        seen_names: set[str] = set()
+        for entry in entries:
+            path = PurePosixPath(entry.filename)
+            mode = entry.external_attr >> 16
+            if (
+                not entry.filename
+                or "\\" in entry.filename
+                or path.is_absolute()
+                or ".." in path.parts
+                or entry.filename in seen_names
+                or entry.flag_bits & 0x1
+                or (mode and stat.S_ISLNK(mode))
+            ):
+                raise ValueError(f"Juliet archive contains an unsafe entry: {entry.filename}")
+            seen_names.add(entry.filename)
+            if entry.file_size < 0 or entry.file_size > _JULIET_MAX_ENTRY_BYTES:
+                raise ValueError(f"Juliet archive entry exceeds its size limit: {entry.filename}")
+            if entry.file_size > max(1, entry.compress_size) * 1_000:
+                raise ValueError(
+                    f"Juliet archive entry exceeds the compression limit: {entry.filename}"
+                )
+            total_uncompressed += entry.file_size
+            if total_uncompressed > _JULIET_MAX_UNCOMPRESSED_BYTES:
+                raise ValueError("Juliet archive exceeds the uncompressed-size limit")
+            if entry.is_dir():
+                continue
+            inventory.append(
+                {
+                    "path": entry.filename,
+                    "size": entry.file_size,
+                    "compressed_size": entry.compress_size,
+                    "crc32": f"{entry.CRC:08x}",
+                }
+            )
+            if (
+                len(path.parts) < 3
+                or path.parts[:2] != ("C", "testcases")
+                or path.suffix.casefold() not in {".c", ".cpp", ".h"}
+            ):
+                continue
+            match = _JULIET_CASE.fullmatch(path.stem)
+            if match is None:
+                ignored_source_count += 1
+                continue
+            groups.setdefault(match.group("base"), []).append(entry)
+            selected_count += 1
+
+        if len(groups) != expected_case_count:
+            raise ValueError(
+                "Juliet test-case count differs from the immutable suite contract: "
+                f"expected {expected_case_count}, observed {len(groups)}"
+            )
+        records = [
+            _juliet_record(
+                source=source,
+                upstream_revision=upstream_revision,
+                retrieved_at=retrieved_at,
+                group_key=group_key,
+                entries=tuple(sorted(groups[group_key], key=lambda item: item.filename)),
+                archive=archive,
+            )
+            for group_key in sorted(groups)
+        ]
+
+    if sha256_file(archive_path) != archive_sha256:
+        raise ValueError("Juliet archive changed while it was being canonicalized")
+    _assert_unique_output(records)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    with output_path.open("x", encoding="utf-8") as writer:
+        for record in records:
+            writer.write(record.model_dump_json() + "\n")
+    manifest: dict[str, Any] = {
+        "schema_version": 1,
+        "adapter": "nist_juliet_cpp_static_review_v1",
+        "source_id": source.id,
+        "source_policy_class": source.policy_class,
+        "license_id": source.license.id,
+        "upstream_revision": upstream_revision,
+        "retrieved_at_utc": retrieved_at.astimezone(UTC).isoformat(),
+        "registry_sha256": registry.canonical_sha256(),
+        "input": {
+            "path": str(archive_path),
+            "sha256": archive_sha256,
+            "size": archive_path.stat().st_size,
+            "entry_count": len(inventory),
+            "inventory_sha256": canonical_json_sha256(inventory),
+            "total_uncompressed_size": total_uncompressed,
+        },
+        "output": {
+            "path": str(output_path),
+            "sha256": sha256_file(output_path),
+            "size": output_path.stat().st_size,
+            "record_count": len(records),
+        },
+        "statistics": {
+            "test_case_count": len(records),
+            "selected_source_file_count": selected_count,
+            "ignored_non_case_source_count": ignored_source_count,
+        },
+        "controls": {
+            "source_only": True,
+            "archive_never_extracted": True,
+            "archive_sha256_pinned": True,
+            "archive_paths_validated": True,
+            "source_never_executed": True,
+            "bounded_context": True,
+            "model_generated": False,
+            "grouped_by_test_case_lineage": True,
+        },
+    }
+    write_json_exclusive(manifest_path, manifest)
+    return manifest
 
 
 def canonicalize_splunk_security_content(

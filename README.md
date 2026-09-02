@@ -77,8 +77,11 @@ Hugging Face public 저장소는 `KaztoRay/ShadowCrafter-9B`만 사용합니다.
 
 많은 자료를 수집하는 것보다 사용 권리, 출처, 품질, 최신성, 개인정보 최소화, 중복 제거와 평가 오염 방지가 우선입니다. Hugging Face 및 보안 자료는 허용 목록과 데이터 카드 검토를 통과한 스냅샷만 학습에 사용합니다. 비밀, 탈취 자격 증명, 불법 취득 자료, 배포가 제한된 데이터는 제외합니다. 세부 정책은 [docs/DATA_GOVERNANCE.md](docs/DATA_GOVERNANCE.md)를 참고하십시오.
 
-현재 확장 train-only snapshot은 8개 승인 소스에서 28,140건을 포함하며, 고정된
-CTI-Bench 5,533건과의 exact/embedded 오염 검사를 통과했습니다. 소스별 수량,
+v1.0은 8개 승인 소스의 28,140건으로 학습했으며, 고정된 CTI-Bench 5,533건에서
+46.267847% accuracy를 기록했습니다. V2 학습 경로는 이 자료에 NIST Juliet C/C++
+1.3의 CC0/public-domain 테스트케이스 64,099건을 추가해 총 92,239건을 사용합니다.
+Juliet ZIP은 공식 SHA-256으로 고정하고 압축을 풀거나 코드를 실행하지 않으며,
+테스트케이스 계보 단위로 묶은 뒤 CTI-Bench 오염 검사를 다시 수행합니다. 소스별 수량,
 해시, 제외 근거와 아직 학습하지 않은 후보는
 [docs/DATASET_EXPANSION.md](docs/DATASET_EXPANSION.md)에 기록합니다.
 
@@ -86,6 +89,12 @@ CTI-Bench 5,533건과의 exact/embedded 오염 검사를 통과했습니다. 소
 manifest와 평가 증거를 회수하고 완료된 체크포인트 및 원격 프로젝트 전체를
 `scripts/sync-from-remote.sh`로 로컬 미러에 증분 동기화합니다.
 SSH 키, Hugging Face 토큰, GitHub 토큰은 저장소나 학습 이미지에 포함하지 않습니다.
+
+V2는 공식 Google Colab VS Code 확장(`google.colab`)에서 실행 가능한
+[`ShadowCrafter_V2_Colab.ipynb`](notebooks/ShadowCrafter_V2_Colab.ipynb)도 제공합니다.
+Colab 런타임 제한에 대응해 private Drive에 hash-검증 checkpoint를 저장하고 재개하며,
+불완전 checkpoint는 보존형 검역 후 마지막 완전본부터 이어갑니다. 연결·입력 업로드와
+비밀 관리 절차는 [docs/COLAB_TRAINING.md](docs/COLAB_TRAINING.md)를 따릅니다.
 
 ## 저장소와 릴리스 흐름
 

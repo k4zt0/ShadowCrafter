@@ -1,10 +1,9 @@
 # ShadowCrafter 개발 상태
 
-마지막 갱신: 2026-09-01 (Asia/Seoul)
+마지막 갱신: 2026-09-02 (Asia/Seoul)
 
-> 전체 진행률 추정: 약 55%. 이는 엔지니어링 작업량 기준이며 모델 성능 점수가
-> 아닙니다. 모델은 아직 미출시 연구 후보이고 95% 목표는 아직 측정하지
-> 않았습니다. 정확도는 public noncommercial official release 업로드를 차단하지 않습니다.
+> v1.0 학습·평가·공개는 완료됐다. V2는 92,239건 대규모 corpus 재학습 단계다.
+> 95%는 고정 외부 평가의 목표이며 보장 수치가 아니다.
 
 ## 완료된 기반 작업
 
@@ -24,13 +23,13 @@
 ### ShadowCrafter-9B
 
 - upstream revision: `489cb97981b8654bcfcf30ce1f94ed1b62e07b53`
-- H100에서 두 optimizer-step QLoRA 호환성 검증 완료
-- preflight train loss `1.772` 확인(정확도 수치가 아님)
-- LoRA-only adapter 파일 검증 완료
-- 2,017건 기준선 전체 학습 job `shadowcrafter-9b-full-1474c34-v1` 실행 중
-- 블랙박스 전용 레코드를 포함한 28,140건 확장 학습 job
-  `shadowcrafter-9b-expanded-blackbox-264540a-v1`이 기준선 성공을 기다리는 중
-- 고정 외부 평가와 릴리스 게이트는 미완료
+- v1.0 28,140건 QLoRA 학습과 LoRA-only adapter 검증 완료
+- CTI-Bench 5,533건 accuracy `46.267847%`, balanced accuracy `11.099532%`,
+  macro-F1 `6.748866%`
+- public Hugging Face `KaztoRay/ShadowCrafter-9B`의 `v1.0` 게시 및 익명
+  다운로드/SHA-256 검증 완료
+- V2는 NIST Juliet 64,099건을 추가한 총 92,239건 corpus로 새 adapter를 학습한다.
+- 공식 VS Code Colab 확장용 재개형 notebook과 Drive checkpoint 완전성 검증 구현 완료
 
 ## 데이터와 평가
 
@@ -52,16 +51,16 @@
 - accuracy, balanced accuracy, macro-F1과 오염을 원시 예측에서 다시 계산하는
   고정 평가 프로토콜 구현 완료; 0.95 달성 여부는 보고하되 업로드는 차단하지 않음
 
-## 다음 순서
+## V2 다음 순서
 
-1. 실행 중인 2,017건 기준선 학습을 완료하고 adapter 무결성을 검증
-2. 고정 commit과 28,140건 train-only manifest로 9B 확장 학습 candidate 실행
-3. 학습에 노출되지 않은 허용된 고정 외부 세트로 정확도·안전·슬라이스 평가
-4. 실제 점수와 `95% target met` 상태를 적은 public noncommercial Official Release 업로드
-5. 모델·체크포인트·전체 원격 프로젝트를 `local_mirror/`에 증분 동기화
-6. 실제 점수와 릴리스 commit을 보고하고 자동 재학습 없이 종료
+1. NIST 공식 ZIP과 64,099개 testcase lineage 검증
+2. 기존 corpus와 합친 92,239건의 중복·비밀·CTI-Bench 오염 검사
+3. VS Code에서 Colab A100급 런타임을 연결하고 고정 commit으로 QLoRA V2 candidate 학습
+4. 학습 완료 adapter 무결성 검증과 CTI-Bench 재평가
+5. 실제 점수와 `95% target met` 상태를 적은 public noncommercial v2.0 업로드
+6. 모델·체크포인트·전체 원격 프로젝트를 `local_mirror/`에 증분 동기화
 
 실제 95% 달성 여부는 사전에 보장할 수 없습니다. 목표 미달은 실제 점수와 함께
 Official Release로 게시합니다. 다만 안전성, 라이선스, 개인정보, 계보 또는
 artifact 무결성 통제에 실패하면 정확도와 관계없이 게시하지 않습니다.
-현재 자동화는 점수와 무관하게 `v1.0` 게시 후 종료하며 `v2.0` 재학습을 예약하지 않습니다.
+V2는 v1.0 평가 문항이나 정답을 학습하지 않고 별도 immutable candidate로 진행한다.

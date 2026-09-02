@@ -1,5 +1,24 @@
 # ShadowCrafter-9B 확장 데이터셋
 
+## V2 대규모 확장
+
+V2는 v1.0 학습에 사용한 28,140건에 NIST SARD의 Juliet C/C++ 1.3
+64,099건을 추가해 총 92,239건의 train-only corpus를 구성한다. NIST가 게시한
+suite 112는 118개 CWE를 포함하고 CC0/public-domain 조건이며, 공식 ZIP SHA-256은
+`ada9d7e1c323d283446df3f55bdee0d00bda1fed786785fe98764d58688f38eb`이다.
+
+Juliet 어댑터는 ZIP을 디스크에 추출하거나 소스를 실행하지 않는다. `C/testcases/`
+아래의 C/C++/header만 읽고 64,099개 테스트케이스 계보로 묶으며, 긴 다중 파일 사례는
+앞·뒤 문맥을 보존하는 고정 길이 제한을 적용한다. `main`, build script, PDF, 지원 코드와
+archive path traversal, symlink, 암호화 entry, 비정상 압축률, raw binary는 제외 또는
+거부한다. 기존 28,140건과 합친 뒤 exact/normalized 중복 제거, secret redaction,
+CTI-Bench 5,533건과의 normalized exact/containment 검사를 통과해야만 V2 학습 입력으로
+승격한다.
+
+이 확장은 CWE 매핑과 화이트박스 소스 취약점 판별을 크게 보강한다. v1.0 외부 평가를
+학습에 사용하지 않으며, V2도 학습 완료 뒤 같은 고정 평가 프로토콜에서 점수를 새로
+측정해 실제 결과를 공개한다.
+
 ## 고정 학습 snapshot
 
 - dataset ID: `security-expanded-20260901-v8-blackbox-train-only`
@@ -71,8 +90,9 @@ decontamination manifest에 저장하지 않았다.
   검역한다.
 - EMBER2024: 3.2M 정적 feature/label은 LLM SFT 문답이 아니라 별도 악성코드
   classifier 또는 tool-backed 분석용이다. raw malware binary는 수집하지 않는다.
-- NIST Juliet/SARD와 PrimeVul: repository/file lineage 분할, 중복 함수 제거와
-  안전한 source-only adapter가 완료되기 전까지 확장 SFT에 넣지 않는다.
+- PrimeVul: repository/file lineage 분할, per-file license 검토, 중복 함수 제거와
+  안전한 source-only adapter가 완료되기 전까지 확장 SFT에 넣지 않는다. NIST
+  Juliet/SARD는 이 통제를 구현해 V2 corpus에 포함한다.
 - 최신 CVE/NVD/KEV/EPSS: 시간에 따라 바뀌는 운영 사실은 weight보다 버전 관리형
   RAG 보안 DB에 둔다.
 

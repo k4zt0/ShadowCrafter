@@ -5,7 +5,8 @@ Thumbs.db
 *.swo
 *~
 .idea/
-.vscode/
+.vscode/*
+!.vscode/extensions.json
 
 # Python caches and environments
 __pycache__/

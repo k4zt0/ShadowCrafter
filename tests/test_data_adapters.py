@@ -10,9 +10,11 @@ import pytest
 from shadowcrafter.data.adapters import (
     AdapterKind,
     canonicalize_downloaded_source,
+    canonicalize_nist_juliet,
     canonicalize_ocsf_schema,
     canonicalize_splunk_security_content,
 )
+from shadowcrafter.data.manifest import sha256_file
 from shadowcrafter.data.prepare import TemporalSplit, prepare_jsonl
 from shadowcrafter.schemas import RiskTier, SecurityRecord, TaskType
 
@@ -30,6 +32,112 @@ def _read_records(path: Path) -> list[SecurityRecord]:
         for line in path.read_text().splitlines()
         if line.strip()
     ]
+
+
+def _juliet_fixture(path: Path, *, unsafe_name: str | None = None) -> None:
+    single = """/* TEMPLATE GENERATED TESTCASE FILE */
+#include <string.h>
+void CWE121_Stack_Based_Buffer_Overflow__char_type_overrun_memcpy_01_bad(void)
+{
+    char data[10];
+    memcpy(data, "AAAAAAAAAAAA", 12);
+}
+void CWE121_Stack_Based_Buffer_Overflow__char_type_overrun_memcpy_01_good(void)
+{
+    char data[10];
+    memcpy(data, "AAAA", 4);
+}
+"""
+    first = """void CWE78_OS_Command_Injection__char_file_system_51_badSink(char * data)
+{
+    system(data);
+}
+"""
+    second = """void CWE78_OS_Command_Injection__char_file_system_51_goodSink(char * data)
+{
+    printLine(data);
+}
+"""
+    with zipfile.ZipFile(path, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+        archive.writestr(
+            "C/testcases/CWE121/s01/"
+            "CWE121_Stack_Based_Buffer_Overflow__char_type_overrun_memcpy_01.c",
+            single,
+        )
+        archive.writestr(
+            "C/testcases/CWE78/s01/CWE78_OS_Command_Injection__char_file_system_51a.c",
+            first,
+        )
+        archive.writestr(
+            "C/testcases/CWE78/s01/CWE78_OS_Command_Injection__char_file_system_51b.c",
+            second,
+        )
+        archive.writestr("C/testcases/CWE78/s01/main.c", "int main(void) { return 0; }")
+        archive.writestr("C/Makefile", "all:\n\t@true\n")
+        if unsafe_name is not None:
+            archive.writestr(unsafe_name, "unsafe")
+
+
+def test_nist_juliet_adapter_groups_lineage_and_never_extracts_archive(tmp_path: Path) -> None:
+    archive_path = tmp_path / "juliet.zip"
+    first_output = tmp_path / "first.jsonl"
+    second_output = tmp_path / "second.jsonl"
+    _juliet_fixture(archive_path)
+    archive_sha256 = sha256_file(archive_path)
+
+    manifest = canonicalize_nist_juliet(
+        archive_path,
+        first_output,
+        upstream_revision="juliet-cpp-1.3-test",
+        retrieved_at=RETRIEVED_AT,
+        registry_path=REGISTRY,
+        expected_archive_sha256=archive_sha256,
+        expected_case_count=2,
+    )
+    canonicalize_nist_juliet(
+        archive_path,
+        second_output,
+        upstream_revision="juliet-cpp-1.3-test",
+        retrieved_at=RETRIEVED_AT,
+        registry_path=REGISTRY,
+        expected_archive_sha256=archive_sha256,
+        expected_case_count=2,
+    )
+
+    assert first_output.read_bytes() == second_output.read_bytes()
+    records = _read_records(first_output)
+    assert len(records) == 2
+    by_cwe = {record.labels["cwe_id"]: record for record in records}
+    assert by_cwe["CWE-121"].task == TaskType.SECURE_CODE_REVIEW
+    assert by_cwe["CWE-121"].labels["source_file_count"] == 1
+    assert by_cwe["CWE-78"].labels["source_file_count"] == 2
+    assert "51a.c" in by_cwe["CWE-78"].messages[0].content
+    assert "51b.c" in by_cwe["CWE-78"].messages[0].content
+    assert by_cwe["CWE-78"].provenance.content_sha256 == by_cwe["CWE-78"].canonical_hash()
+    assert manifest["output"]["record_count"] == 2
+    assert manifest["statistics"] == {
+        "test_case_count": 2,
+        "selected_source_file_count": 3,
+        "ignored_non_case_source_count": 1,
+    }
+    assert manifest["controls"]["archive_never_extracted"] is True
+    assert not (tmp_path / "C").exists()
+
+
+def test_nist_juliet_adapter_rejects_archive_path_traversal(tmp_path: Path) -> None:
+    archive_path = tmp_path / "juliet-unsafe.zip"
+    _juliet_fixture(archive_path, unsafe_name="../outside.c")
+
+    with pytest.raises(ValueError, match="unsafe entry"):
+        canonicalize_nist_juliet(
+            archive_path,
+            tmp_path / "unsafe.jsonl",
+            upstream_revision="juliet-cpp-1.3-test",
+            retrieved_at=RETRIEVED_AT,
+            registry_path=REGISTRY,
+            expected_archive_sha256=sha256_file(archive_path),
+            expected_case_count=2,
+        )
 
 
 def _attack_bundle() -> dict[str, object]:
