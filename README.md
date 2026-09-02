@@ -78,11 +78,14 @@ Hugging Face public 저장소는 `KaztoRay/ShadowCrafter-9B`만 사용합니다.
 많은 자료를 수집하는 것보다 사용 권리, 출처, 품질, 최신성, 개인정보 최소화, 중복 제거와 평가 오염 방지가 우선입니다. Hugging Face 및 보안 자료는 허용 목록과 데이터 카드 검토를 통과한 스냅샷만 학습에 사용합니다. 비밀, 탈취 자격 증명, 불법 취득 자료, 배포가 제한된 데이터는 제외합니다. 세부 정책은 [docs/DATA_GOVERNANCE.md](docs/DATA_GOVERNANCE.md)를 참고하십시오.
 
 v1.0은 8개 승인 소스의 28,140건으로 학습했으며, 고정된 CTI-Bench 5,533건에서
-46.267847% accuracy를 기록했습니다. V2 학습 경로는 이 자료에 NIST Juliet C/C++
-1.3의 CC0/public-domain 테스트케이스 64,099건을 추가해 총 92,239건을 사용합니다.
-Juliet ZIP은 공식 SHA-256으로 고정하고 압축을 풀거나 코드를 실행하지 않으며,
-테스트케이스 계보 단위로 묶은 뒤 CTI-Bench 오염 검사를 다시 수행합니다. 소스별 수량,
-해시, 제외 근거와 아직 학습하지 않은 후보는
+46.267847% accuracy를 기록했습니다. V2는 원본 V1 28,140건, NIST Juliet C/C++
+1.3의 CC0/public-domain 보안 코드 리뷰 64,099건, 같은 Juliet 계보의 결정적 CWE-ID
+분류 view 64,099건, V1 ATT&CK procedure의 정답 비노출 기법-ID view 17,639건으로
+총 173,977개 학습 레코드를 사용합니다. 이는 V1의 6.18배이며 파생 view는 별도 원천
+자료가 아니라 같은 승인 자료의 과제 정렬 표현입니다. Juliet ZIP은 공식 SHA-256으로
+고정하고 압축을 풀거나 코드를 실행하지 않으며, 모든 view가 부모 계보와 split group을
+유지한 상태에서 CTI-Bench 오염 검사를 다시 수행합니다. 소스별 수량, 해시, 제외 근거와
+아직 학습하지 않은 후보는
 [docs/DATASET_EXPANSION.md](docs/DATASET_EXPANSION.md)에 기록합니다.
 
 원격 GPU 학습은 재현 가능한 고정 manifest로 실행하며, 로그·평가 번들·checksum

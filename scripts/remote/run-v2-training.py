@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build the pinned 92K-record V2 corpus and train one immutable 9B candidate."""
+"""Build the pinned 174K-record multitask V2 corpus and train one immutable 9B candidate."""
 
 from __future__ import annotations
 
@@ -10,11 +10,16 @@ import re
 import shutil
 import subprocess
 import sys
+from collections.abc import Iterator, Sequence
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
 from shadowcrafter.data.adapters import canonicalize_nist_juliet
+from shadowcrafter.data.augmentation import (
+    derive_attack_technique_id_jsonl,
+    derive_juliet_cwe_mapping_jsonl,
+)
 from shadowcrafter.data.ctibench import (
     find_ctibench_training_contamination,
     load_ctibench_eval_cases,
@@ -37,6 +42,8 @@ _JULIET_ARCHIVE = (
 )
 _JULIET_ARCHIVE_SHA256 = "ada9d7e1c323d283446df3f55bdee0d00bda1fed786785fe98764d58688f38eb"
 _JULIET_RECORD_COUNT = 64_099
+_JULIET_CWE_MAPPING_COUNT = 64_099
+_ATTACK_TECHNIQUE_ID_COUNT = 17_639
 _CTIBENCH_CASES = _PROJECT_ROOT / "artifacts/evaluations/ctibench-9237e163/cases.jsonl"
 _CTIBENCH_CASES_SHA256 = "2455b46b4851ed998ce3094ba7d9f796365bd0d71ce51264ff665f1c5203b423"
 _CTIBENCH_CASE_COUNT = 5_533
@@ -102,8 +109,7 @@ def _source(revision: str) -> Path:
     return source
 
 
-def _records(path: Path, *, source_id: str | None = None) -> list[SecurityRecord]:
-    records: list[SecurityRecord] = []
+def _records(path: Path, *, source_id: str | None = None) -> Iterator[SecurityRecord]:
     with path.open(encoding="utf-8") as handle:
         for line_number, line in enumerate(handle, start=1):
             if not line.strip():
@@ -113,8 +119,12 @@ def _records(path: Path, *, source_id: str | None = None) -> list[SecurityRecord
             except Exception as exc:
                 raise V2TrainingError(f"invalid training record at line {line_number}") from exc
             if source_id is None or record.provenance.source_id == source_id:
-                records.append(record)
-    return records
+                yield record
+
+
+def _records_many(paths: Sequence[Path]) -> Iterator[SecurityRecord]:
+    for path in paths:
+        yield from _records(path)
 
 
 def _prepare(source: Path, revision: str) -> tuple[Path, Path, dict[str, Any], Path]:
@@ -123,10 +133,12 @@ def _prepare(source: Path, revision: str) -> tuple[Path, Path, dict[str, Any], P
         _PROJECT_ROOT / "data/canonical/nist-juliet-sard" / f"juliet-cpp-1.3-{short_revision}"
     )
     juliet_output = canonical_root / "records.jsonl"
+    juliet_cwe_output = canonical_root / "cwe-mapping-records.jsonl"
+    attack_id_output = canonical_root / "attack-technique-id-records.jsonl"
     processed_root = (
         _PROJECT_ROOT
         / "data/processed"
-        / f"security-v2-juliet-20260902-{short_revision}-train-only"
+        / f"security-v2-multitask-174k-20260902-{short_revision}-train-only"
     )
     report_path = (
         _PROJECT_ROOT
@@ -142,25 +154,47 @@ def _prepare(source: Path, revision: str) -> tuple[Path, Path, dict[str, Any], P
         retrieved_at=retrieved_at,
         registry_path=registry_path,
     )
+    juliet_cwe_manifest = derive_juliet_cwe_mapping_jsonl(
+        juliet_output,
+        juliet_cwe_output,
+        expected_record_count=_JULIET_CWE_MAPPING_COUNT,
+    )
+    attack_id_manifest = derive_attack_technique_id_jsonl(
+        _V1_TRAIN,
+        attack_id_output,
+        expected_input_count=_V1_RECORD_COUNT,
+        expected_output_count=_ATTACK_TECHNIQUE_ID_COUNT,
+    )
     cases = load_ctibench_eval_cases(_CTIBENCH_CASES)
     if len(cases) != _CTIBENCH_CASE_COUNT:
         raise V2TrainingError("CTIBench case count differs from the immutable evaluation pin")
-    juliet_records = _records(juliet_output)
-    if len(juliet_records) != _JULIET_RECORD_COUNT:
-        raise V2TrainingError("Juliet adapter did not emit the complete 64,099-case suite")
-    matches = find_ctibench_training_contamination(juliet_records, cases)
+    added_count = sum(
+        int(manifest["output"]["record_count"])
+        for manifest in (juliet_manifest, juliet_cwe_manifest, attack_id_manifest)
+    )
+    if added_count != (
+        _JULIET_RECORD_COUNT + _JULIET_CWE_MAPPING_COUNT + _ATTACK_TECHNIQUE_ID_COUNT
+    ):
+        raise V2TrainingError("V2 adapters did not emit all three complete multitask views")
+    added_paths = (juliet_output, juliet_cwe_output, attack_id_output)
+    matches = find_ctibench_training_contamination(_records_many(added_paths), cases)
     if matches:
         raise V2TrainingError(
-            f"Juliet corpus overlaps CTIBench evaluation content ({len(matches)} records)"
+            f"V2 added corpus overlaps CTIBench evaluation content ({len(matches)} records)"
         )
 
     prepared = prepare_jsonl_many(
-        [_V1_TRAIN, juliet_output],
+        [_V1_TRAIN, *added_paths],
         processed_root,
         registry_path=registry_path,
         split_mode=SplitMode.TRAIN_ONLY,
     )
-    expected_count = _V1_RECORD_COUNT + _JULIET_RECORD_COUNT
+    expected_count = (
+        _V1_RECORD_COUNT
+        + _JULIET_RECORD_COUNT
+        + _JULIET_CWE_MAPPING_COUNT
+        + _ATTACK_TECHNIQUE_ID_COUNT
+    )
     if (
         prepared.get("record_count") != expected_count
         or prepared.get("split_counts", {}).get("train") != expected_count
@@ -168,7 +202,7 @@ def _prepare(source: Path, revision: str) -> tuple[Path, Path, dict[str, Any], P
         or prepared.get("split_counts", {}).get("test") != 0
         or prepared.get("split_counts", {}).get("evaluation") != 0
     ):
-        raise V2TrainingError("V2 prepared split does not preserve the expected 92,239 records")
+        raise V2TrainingError("V2 prepared split does not preserve the expected 173,977 records")
     if (
         prepared.get("exact_duplicate_count") != 0
         or prepared.get("normalized_duplicate_count") != 0
@@ -193,6 +227,8 @@ def _prepare(source: Path, revision: str) -> tuple[Path, Path, dict[str, Any], P
                 "record_count": _V1_RECORD_COUNT,
             },
             "nist_juliet": juliet_manifest,
+            "nist_juliet_cwe_mapping": juliet_cwe_manifest,
+            "mitre_attack_technique_id": attack_id_manifest,
             "ctibench_evaluation": {
                 "path": str(_CTIBENCH_CASES),
                 "sha256": _CTIBENCH_CASES_SHA256,
@@ -241,7 +277,7 @@ def main() -> int:
         output_dir = (
             _PROJECT_ROOT
             / "artifacts/checkpoints/shadowcrafter-9b"
-            / f"v2-expanded-juliet-20260902-{args.source_revision[:7]}-r1"
+            / f"v2-expanded-multitask-174k-20260902-{args.source_revision[:7]}-r1"
         )
         pins = TrainingPins(
             config_sha256=sha256_file(config_path),

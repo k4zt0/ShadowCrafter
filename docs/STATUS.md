@@ -2,7 +2,7 @@
 
 마지막 갱신: 2026-09-02 (Asia/Seoul)
 
-> v1.0 학습·평가·공개는 완료됐다. V2는 92,239건 대규모 corpus 재학습 단계다.
+> v1.0 학습·평가·공개는 완료됐다. V2는 173,977건 다중과제 corpus 재학습 단계다.
 > 95%는 고정 외부 평가의 목표이며 보장 수치가 아니다.
 
 ## 완료된 기반 작업
@@ -28,7 +28,10 @@
   macro-F1 `6.748866%`
 - public Hugging Face `KaztoRay/ShadowCrafter-9B`의 `v1.0` 게시 및 익명
   다운로드/SHA-256 검증 완료
-- V2는 NIST Juliet 64,099건을 추가한 총 92,239건 corpus로 새 adapter를 학습한다.
+- V2는 V1 28,140건, Juliet 리뷰 64,099건, Juliet CWE-ID view 64,099건,
+  ATT&CK 기법-ID view 17,639건의 총 173,977건 corpus로 새 adapter를 학습한다.
+- V2 설정은 LoRA `64/128`, learning rate `8e-5`, warmup `5%`, weight decay `0.01`,
+  gradient clipping `1.0`으로 용량과 수렴 안정성을 보강한다.
 - 공식 VS Code Colab 확장용 accountless notebook, 내장 source/data 검증,
   임시 checkpoint 완전성, CTI-Bench 동결 평가 및 측정 evidence 포함 로컬 export 구현 완료
 
@@ -55,7 +58,7 @@
 ## V2 다음 순서
 
 1. NIST 공식 ZIP과 64,099개 testcase lineage 검증
-2. 기존 corpus와 합친 92,239건의 중복·비밀·CTI-Bench 오염 검사
+2. CWE-ID/ATT&CK-ID 파생 view와 합친 173,977건의 중복·비밀·CTI-Bench 오염 검사
 3. VS Code에서 Colab A100급 런타임을 연결하고 고정 commit으로 QLoRA V2 candidate 학습
 4. 학습 완료 adapter 무결성 검증과 notebook 7번 셀의 CTI-Bench 재평가
 5. 실제 점수와 `95% target met` 상태를 적은 public noncommercial v2.0 업로드

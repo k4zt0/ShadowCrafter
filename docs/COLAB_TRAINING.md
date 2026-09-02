@@ -14,6 +14,11 @@ notebooks/ShadowCrafter_V2_Colab.ipynb는 다음 연결이나 비밀을 요구�
 노트북 안에 압축되어 있으며 복원 전후 SHA-256을 확인한다. CTIBench는 오염 검사와
 학습 완료 candidate의 동결 평가에만 사용하고 학습하지 않는다.
 
+5번 셀은 V1 28,140건에 Juliet 리뷰 64,099건, Juliet CWE-ID view 64,099건,
+ATT&CK 기법-ID view 17,639건을 합쳐 173,977건(V1의 6.18배)을 만든다. 파생 view는
+부모 계보·라이선스·split group을 보존하고, 질문에 정답 ID가 노출된 ATT&CK 레코드는
+제외한다. 준비된 전체 corpus는 중복과 CTIBench 오염이 0건이어야 학습으로 넘어간다.
+
 재현 가능한 노트북은 scripts/build-accountless-colab-notebook.py로 생성한다. 생성기는
 고정된 로컬 입력 해시를 확인하고, 필요한 source/config만 담은 detached Git bundle을
 만들어 notebook에 포함한다. token이나 credential은 포함하지 않는다.

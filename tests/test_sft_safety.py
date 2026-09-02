@@ -246,6 +246,8 @@ def test_completion_boundary_and_no_hub_arguments() -> None:
     assert kwargs["resume_from_checkpoint"] is None
     assert kwargs["save_strategy"] == "no"
     assert kwargs["eval_strategy"] == "no"
+    assert kwargs["weight_decay"] == 0.01
+    assert kwargs["max_grad_norm"] == 1.0
 
 
 def test_saved_adapter_is_reopened_as_finite_lora_only(tmp_path: Path) -> None:

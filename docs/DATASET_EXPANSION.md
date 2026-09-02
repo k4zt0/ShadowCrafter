@@ -2,22 +2,43 @@
 
 ## V2 대규모 확장
 
-V2는 v1.0 학습에 사용한 28,140건에 NIST SARD의 Juliet C/C++ 1.3
-64,099건을 추가해 총 92,239건의 train-only corpus를 구성한다. NIST가 게시한
-suite 112는 118개 CWE를 포함하고 CC0/public-domain 조건이며, 공식 ZIP SHA-256은
+V2는 v1.0의 28,140건에 NIST SARD Juliet C/C++ 1.3 원본 보안 코드 리뷰
+64,099건, Juliet의 CWE-ID 분류 view 64,099건, V1 ATT&CK procedure의 기법-ID
+분류 view 17,639건을 더해 총 173,977개의 train-only 레코드를 구성한다. V1의
+6.18배다. NIST가 게시한 suite 112는 118개 CWE를 포함하고 CC0/public-domain
+조건이며, 공식 ZIP SHA-256은
 `ada9d7e1c323d283446df3f55bdee0d00bda1fed786785fe98764d58688f38eb`이다.
 
 Juliet 어댑터는 ZIP을 디스크에 추출하거나 소스를 실행하지 않는다. `C/testcases/`
 아래의 C/C++/header만 읽고 64,099개 테스트케이스 계보로 묶으며, 긴 다중 파일 사례는
 앞·뒤 문맥을 보존하는 고정 길이 제한을 적용한다. `main`, build script, PDF, 지원 코드와
 archive path traversal, symlink, 암호화 entry, 비정상 압축률, raw binary는 제외 또는
-거부한다. 기존 28,140건과 합친 뒤 exact/normalized 중복 제거, secret redaction,
+거부한다. 기존 자료와 합친 뒤 exact/normalized 중복 제거, secret redaction,
 CTI-Bench 5,533건과의 normalized exact/containment 검사를 통과해야만 V2 학습 입력으로
 승격한다.
 
-이 확장은 CWE 매핑과 화이트박스 소스 취약점 판별을 크게 보강한다. v1.0 외부 평가를
-학습에 사용하지 않으며, V2도 학습 완료 뒤 같은 고정 평가 프로토콜에서 점수를 새로
-측정해 실제 결과를 공개한다.
+두 파생 view는 새로운 독립 원천이라고 세지 않는다. 부모 record ID, provenance,
+license, split group을 그대로 묶고 템플릿과 정답을 결정적으로 생성한다. Juliet view는
+긴 설명 대신 정확히 하나의 `CWE-###`만 답하게 하며 소스의 파일명·함수명에 포함된
+정답 CWE ID는 `CWE_REDACTED`로 마스킹한다. ATT&CK view는 정확히 하나의
+`T####` 또는 `T####.###`만 답하게 하며, 원본 질문에 정답 ID가 이미 있던 2건은
+제외한다. 실제 V1 전체 검사 결과 ATT&CK procedure 17,641건 중 17,639건이 통과했다.
+
+이 확장은 CWE 매핑, 화이트박스 소스 취약점 판별, ATT&CK 구조화 출력을 보강한다.
+v1.0 외부 평가 문항·정답·예측은 학습에 사용하지 않으며, V2도 학습 완료 뒤 같은 고정
+평가 프로토콜에서 점수를 새로 측정해 실제 결과를 공개한다.
+
+## V2 학습 설정
+
+- LoRA rank/alpha: `64/128` (V1의 `32/64`보다 adapter 표현력 확대)
+- learning rate: `8e-5`, warmup: `5%`
+- weight decay: `0.01`, gradient clipping: `1.0`
+- effective batch: `32`, epochs: `2`, max sequence length: `4096`
+- completion-only loss, NF4 QLoRA, bfloat16 compute, gradient checkpointing 유지
+
+설정 변경은 더 큰 다중과제 corpus에서 수렴 안정성과 표현 용량을 높이려는 사전
+설정이다. 정확도 향상을 보장하거나 평가셋을 보고 자동 재학습하지 않는다. 실제 V2
+accuracy, balanced accuracy, macro-F1은 완료 candidate의 동결 평가 결과만 기록한다.
 
 ## 고정 학습 snapshot
 

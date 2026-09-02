@@ -254,7 +254,8 @@ print('Restored inputs:', V1_LOCAL, CTI_LOCAL)
 연결한 뒤 위에서 아래로 실행하세요.
 
 - 기반 모델: 공개 ornith-ai/Ornith-1.5-9B exact revision을 토큰 없이 익명 다운로드
-- 내장 학습 자료: v1 28,140건 + 공개 NIST Juliet C/C++ 64,099건 = 92,239건
+- 내장 학습 자료: v1 28,140건 + Juliet 원본 64,099건 + CWE 분류 view 64,099건
+  + ATT&CK 기법-ID view 17,639건 = 총 173,977건(V1의 6.18배)
 - 내장 평가 자료: CTIBench 5,533건은 오염 검사와 학습 후 동결 평가에만 사용
 - 내장 실행 코드와 입력은 복원 전후 SHA-256으로 검증
 - 학습 중 Hub 업로드, telemetry, W&B 보고를 사용하지 않음
@@ -385,10 +386,14 @@ print(
 )"""
         ),
         _code_cell(
-            """# 5. V2 92,239건 corpus 생성/검증
+            """# 5. V2 173,977건 다중과제 corpus 생성/검증
 import urllib.request, uuid
 from datetime import UTC, datetime
 from shadowcrafter.data.adapters import canonicalize_nist_juliet
+from shadowcrafter.data.augmentation import (
+    derive_attack_technique_id_jsonl,
+    derive_juliet_cwe_mapping_jsonl,
+)
 from shadowcrafter.data.ctibench import (
     find_ctibench_training_contamination,
     load_ctibench_eval_cases,
@@ -399,11 +404,11 @@ from shadowcrafter.schemas import SecurityRecord
 JULIET_SHA256 = 'ada9d7e1c323d283446df3f55bdee0d00bda1fed786785fe98764d58688f38eb'
 if sha256_file(V1_LOCAL) != V1_SHA256 or sha256_file(CTI_LOCAL) != CTI_SHA256:
     raise RuntimeError('내장 입력 파일 검증에 실패했습니다.')
-DATA_CACHE = SESSION_ROOT / 'datasets' / f'v2.0-92239-{SOURCE_REVISION[:12]}'
+DATA_CACHE = SESSION_ROOT / 'datasets' / f'v2.0-173977-{SOURCE_REVISION[:12]}'
 LOCAL_DATA = SESSION_ROOT / 'processed-v2'
 if DATA_CACHE.is_dir() and (DATA_CACHE / 'READY.json').is_file():
     ready = json.loads((DATA_CACHE / 'READY.json').read_text())
-    if ready.get('record_count') != 92_239:
+    if ready.get('record_count') != 173_977:
         raise RuntimeError('dataset cache record count가 다릅니다.')
     if not LOCAL_DATA.exists():
         shutil.copytree(DATA_CACHE / 'processed', LOCAL_DATA)
@@ -424,26 +429,46 @@ else:
     if sha256_file(juliet_zip) != JULIET_SHA256:
         raise RuntimeError('NIST Juliet 공식 ZIP SHA-256 검증 실패')
     juliet_jsonl = WORK / 'juliet.jsonl'
-    canonicalize_nist_juliet(
+    juliet_manifest = canonicalize_nist_juliet(
         juliet_zip, juliet_jsonl,
         upstream_revision='nist-sard-suite-112-juliet-cpp-1.3',
         retrieved_at=datetime.now(UTC),
         registry_path=REPO_DIR / 'configs/data/sources.yaml',
     )
+    juliet_cwe_jsonl = WORK / 'juliet-cwe-mapping.jsonl'
+    cwe_view_manifest = derive_juliet_cwe_mapping_jsonl(
+        juliet_jsonl, juliet_cwe_jsonl, expected_record_count=64_099,
+    )
+    attack_id_jsonl = WORK / 'attack-technique-id-mapping.jsonl'
+    attack_view_manifest = derive_attack_technique_id_jsonl(
+        V1_LOCAL, attack_id_jsonl,
+        expected_input_count=28_140, expected_output_count=17_639,
+    )
     cases = load_ctibench_eval_cases(CTI_LOCAL)
-    juliet_records = [
-        SecurityRecord.model_validate_json(line)
-        for line in juliet_jsonl.read_text().splitlines() if line
-    ]
-    overlap = find_ctibench_training_contamination(juliet_records, cases)
+    added_paths = (juliet_jsonl, juliet_cwe_jsonl, attack_id_jsonl)
+    added_count = sum(
+        manifest['output']['record_count']
+        for manifest in (juliet_manifest, cwe_view_manifest, attack_view_manifest)
+    )
+    if added_count != 145_837:
+        raise RuntimeError(f'V2 추가 학습자료 수 불일치: {added_count}')
+    def iter_security_records(paths):
+        for path in paths:
+            with path.open(encoding='utf-8') as handle:
+                for line in handle:
+                    if line.strip():
+                        yield SecurityRecord.model_validate_json(line)
+    overlap = find_ctibench_training_contamination(
+        iter_security_records(added_paths), cases,
+    )
     if overlap:
-        raise RuntimeError(f'Juliet/CTIBench 오염 발견: {len(overlap)}')
+        raise RuntimeError(f'V2 추가 학습자료/CTIBench 오염 발견: {len(overlap)}')
     prepared = prepare_jsonl_many(
-        [V1_LOCAL, juliet_jsonl], LOCAL_DATA,
+        [V1_LOCAL, *added_paths], LOCAL_DATA,
         registry_path=REPO_DIR / 'configs/data/sources.yaml',
         split_mode=SplitMode.TRAIN_ONLY,
     )
-    if prepared['record_count'] != 92_239 or prepared['split_counts']['train'] != 92_239:
+    if prepared['record_count'] != 173_977 or prepared['split_counts']['train'] != 173_977:
         raise RuntimeError(f'V2 record count 불일치: {prepared["split_counts"]}')
     if prepared['exact_duplicate_count'] or prepared['normalized_duplicate_count']:
         raise RuntimeError('V2 corpus에 duplicate가 남았습니다.')
@@ -452,7 +477,11 @@ else:
     shutil.copytree(LOCAL_DATA, staging / 'processed')
     ready = {
         'schema_version': 1,
-        'record_count': 92_239,
+        'record_count': 173_977,
+        'v1_record_count': 28_140,
+        'juliet_review_record_count': 64_099,
+        'juliet_cwe_mapping_record_count': cwe_view_manifest['output']['record_count'],
+        'attack_technique_id_record_count': attack_view_manifest['output']['record_count'],
         'train_sha256': sha256_file(LOCAL_DATA / 'train.jsonl'),
         'manifest_sha256': sha256_file(LOCAL_DATA / 'manifest.json'),
         'dataset_sha256': prepared['dataset_sha256'],

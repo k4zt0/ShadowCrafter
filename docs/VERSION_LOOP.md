@@ -7,15 +7,17 @@ Official Release 게시를 완료했다. 측정 accuracy는 46.267847%, balanced
 V2는 다음 순서로 별도 immutable candidate를 만든다.
 
 1. 공식 SHA-256으로 고정한 NIST Juliet 64,099건을 source-only로 canonicalize한다.
-2. v1 corpus와 합친 92,239건에서 중복·비밀·CTI-Bench 오염 검사를 수행한다.
-3. 깨끗한 detached Git snapshot, 고정 base model과 manifest로 새 QLoRA adapter를
+2. 부모 계보를 보존한 Juliet CWE-ID 64,099건과 ATT&CK 기법-ID 17,639건의 결정적
+   다중과제 view를 생성한다.
+3. V1과 합친 173,977건에서 중복·비밀·CTI-Bench 오염 검사를 수행한다.
+4. 깨끗한 detached Git snapshot, 고정 base model과 manifest로 새 QLoRA adapter를
    처음부터 학습한다. v1 평가 답안이나 예측은 학습 입력에 사용하지 않는다.
-4. 완료 checkpoint와 실행 manifest를 다시 해시하고 안전한 LoRA surface를 검증한다.
-5. 고정된 CTI-Bench 5,533건에서 accuracy, balanced accuracy, macro-F1을 전체 및
+5. 완료 checkpoint와 실행 manifest를 다시 해시하고 안전한 LoRA surface를 검증한다.
+6. 고정된 CTI-Bench 5,533건에서 accuracy, balanced accuracy, macro-F1을 전체 및
    과제별로 다시 계산한다.
-6. 실제 점수를 적은 public noncommercial `v2.0` Official Release를
+7. 실제 점수를 적은 public noncommercial `v2.0` Official Release를
    `KaztoRay/ShadowCrafter-9B`에 올리고 동일한 Git tag를 생성한다.
-7. 원격 프로젝트와 완료 가중치를 `local_mirror/`에 증분 동기화한다.
+8. 원격 프로젝트와 완료 가중치를 `local_mirror/`에 증분 동기화한다.
 
 점수가 0.95보다 낮아도 결과를 숨기지 않으며 V2 점수는 학습 완료 후에만 측정한다.
 같은 평가셋 점수를 보고 자동 반복 재학습하지 않는다.

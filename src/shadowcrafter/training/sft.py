@@ -124,6 +124,8 @@ _TRAINING_KEYS = frozenset(
         "gradient_accumulation_steps",
         "learning_rate",
         "warmup_ratio",
+        "weight_decay",
+        "max_grad_norm",
         "epochs",
         "gradient_checkpointing",
         "completion_only_loss",
@@ -482,6 +484,8 @@ def _load_dense_config(path: Path, *, max_steps: int) -> dict[str, Any]:
     _required_int(training, "gradient_accumulation_steps", minimum=1, maximum=4096)
     _required_float(training, "learning_rate", minimum=0.0, maximum=1.0, minimum_inclusive=False)
     _required_float(training, "warmup_ratio", minimum=0.0, maximum=1.0)
+    _required_float(training, "weight_decay", minimum=0.0, maximum=1.0)
+    _required_float(training, "max_grad_norm", minimum=0.0, maximum=100.0, minimum_inclusive=False)
     _required_float(training, "epochs", minimum=0.0, maximum=100.0, minimum_inclusive=False)
     _required_int(training, "seed", minimum=0, maximum=2**32 - 1)
     if (
@@ -993,6 +997,8 @@ def _sft_kwargs(
         "gradient_accumulation_steps": int(training["gradient_accumulation_steps"]),
         "learning_rate": float(training["learning_rate"]),
         "warmup_ratio": float(training["warmup_ratio"]),
+        "weight_decay": float(training["weight_decay"]),
+        "max_grad_norm": float(training["max_grad_norm"]),
         "lr_scheduler_type": "cosine",
         "optim": "paged_adamw_8bit",
         "bf16": True,

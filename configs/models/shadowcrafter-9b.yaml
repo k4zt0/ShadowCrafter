@@ -17,8 +17,8 @@ training:
   double_quant: true
   compute_dtype: bfloat16
   max_sequence_length: 4096
-  lora_rank: 32
-  lora_alpha: 64
+  lora_rank: 64
+  lora_alpha: 128
   lora_dropout: 0.05
   target_modules:
     - q_proj
@@ -36,8 +36,10 @@ training:
   expected_target_module_count: 248
   per_device_train_batch_size: 1
   gradient_accumulation_steps: 32
-  learning_rate: 0.0001
-  warmup_ratio: 0.03
+  learning_rate: 0.00008
+  warmup_ratio: 0.05
+  weight_decay: 0.01
+  max_grad_norm: 1.0
   epochs: 2
   gradient_checkpointing: true
   completion_only_loss: true
