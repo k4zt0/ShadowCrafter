@@ -275,7 +275,11 @@ def _inference_request(
             "usage_scope": "noncommercial-private-research",
             "evaluation_only": True,
             "benchmark_holdout": True,
-            "cases": {"path": str(_CTI_CASES), "sha256": _CASES_SHA256},
+            "cases": {
+                "path": str(_CTI_CASES),
+                "sha256": _CASES_SHA256,
+                "record_count": _CASES_COUNT,
+            },
             "adapter_manifest": {
                 "path": str(_CTI_ADAPTER_MANIFEST),
                 "sha256": _ADAPTER_MANIFEST_SHA256,
