@@ -8,8 +8,10 @@
 
 1. VS Code에서 `notebooks/ShadowCrafter_V2_Colab.ipynb`를 연다.
 2. 오른쪽 위 `Select Kernel`을 누른다.
-3. `Colab` → `Auto Connect`를 선택하고 Google 계정으로 로그인한다.
-4. A100 40GB 이상의 GPU runtime인지 첫 셀에서 확인한다.
+3. `Colab` → `Assign New Server...` → `GPU`에서 A100 40GB 이상 서버를
+   할당한다. `Auto Connect`가 CPU 서버를 선택했다면 현재 kernel을 누르고
+   `Select Another Kernel...`에서 GPU 서버를 다시 할당한다.
+4. 첫 셀이 `nvidia-smi`와 VRAM 38,000 MiB 이상을 확인하는지 본다.
 5. Command Palette의 `Colab: Mount Google Drive to Server...`를 사용하거나 notebook의
    Drive mount 셀을 실행한다.
 
