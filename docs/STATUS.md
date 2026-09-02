@@ -58,7 +58,8 @@
 2. 고정 commit과 28,140건 train-only manifest로 9B 확장 학습 candidate 실행
 3. 학습에 노출되지 않은 허용된 고정 외부 세트로 정확도·안전·슬라이스 평가
 4. 실제 점수와 `95% target met` 상태를 적은 private Official Release 업로드
-5. 실패 분석은 개발 세트에만 반영하고 blind test 오염 없이 후속 모델 개선
+5. 모델·체크포인트·전체 원격 프로젝트를 `local_mirror/`에 증분 동기화
+6. 실패 분석은 개발 세트에만 반영하고 blind test 오염 없이 후속 모델 개선
 
 실제 95% 달성 여부는 사전에 보장할 수 없습니다. 목표 미달은 실제 점수와 함께
 Official Release로 게시합니다. 다만 안전성, 라이선스, 개인정보, 계보 또는

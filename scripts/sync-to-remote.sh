@@ -20,6 +20,7 @@ rsync -az --delete \
   --exclude '.pytest_cache/' \
   --exclude '.ruff_cache/' \
   --exclude '__pycache__/' \
+  --exclude 'local_mirror/' \
   --exclude 'artifacts/' \
   --exclude 'data/raw/' \
   -e "ssh -i $SSH_KEY_PATH -p $REMOTE_PORT" \

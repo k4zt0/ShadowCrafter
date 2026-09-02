@@ -1,9 +1,9 @@
 # Remote training and local-custody workflow
 
 ShadowCrafter uses a remote GPU host for computation. The local workstation is authoritative
-for source, approved data, manifests, and evaluation evidence, but the operator explicitly
-does not retain base-model or checkpoint weight files locally. Weights must therefore have
-two independently recoverable approved remote copies before the training-host copy is removed.
+for source, approved data, manifests, evaluation evidence, and a Git-ignored mirror of the
+remote project, base model, checkpoints, and completed weights. The remote training copy and
+private Hub release remain separate recovery and publication copies.
 
 The approved private endpoints are:
 
@@ -19,7 +19,7 @@ and licensing gates, may be published as a release.
 
 | Location | Role | Must not be the only copy of |
 |---|---|---|
-| Local workstation | Authoritative Git history, approved data, evaluations, and manifests; no model weights | Source, data, evidence, manifests |
+| Local workstation | Authoritative Git history plus isolated `local_mirror/` project and weight copies | Source, data, evidence, manifests, model copies |
 | Private GitHub | Source, configuration, tests, documentation, and non-sensitive small manifests | Data, weights, secrets, sensitive reports |
 | Remote GPU host | Execution environment and working weight copy | A completed model after an independently verified remote copy exists |
 | Private Hugging Face | Gated per-model weight and release store | The only weight copy |
@@ -37,7 +37,7 @@ Start from the local repository root. Before transferring anything:
 3. Validate model configuration, lint, type-check, and test the code.
 4. Pin the upstream Ornith model and tokenizer to resolved immutable revisions.
 5. Freeze approved data snapshots and record licenses, permissions, hashes, and split manifests.
-6. Calculate required local metadata/data and remote weight capacity, including temporary shards.
+6. Calculate required local mirror and remote weight capacity, including temporary shards.
 7. Confirm that a second approved remote weight target is available before retention cleanup.
 
 ```bash

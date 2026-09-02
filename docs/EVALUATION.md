@@ -36,9 +36,9 @@ evaluating a subset is not allowed.
 The gate accepts a bundle-local `release-evidence.json`. Every referenced path must be relative,
 must remain inside the bundle, and must not traverse a symlink. Each file has a frozen SHA-256;
 JSONL files also have an exact record count. The bundle contains only code/data/evaluation
-evidence and manifests locally. Per the current custody policy, base-model and checkpoint weight
-files remain on the approved remote host and are identified by immutable manifests and hashes;
-the gate does not copy weights to the workstation.
+evidence and manifests locally. Base-model and checkpoint weights are identified by immutable
+manifests and hashes; the evaluation gate itself does not copy weights, while the separate
+post-run mirror stores them below the Git-ignored `local_mirror/` boundary.
 
 Required evidence includes:
 
@@ -129,7 +129,7 @@ reported scores. Authorization is limited to a noncommercial **private Official 
 public visibility and commercial publication remain forbidden.
 
 The workstation-local directory publisher is intentionally disabled because local base/model/
-checkpoint files are forbidden by custody policy. The supported
+checkpoint files are transferred only by the isolated project-mirror workflow. The supported
 `release publish-remote-official` path reads each exact manifest-allowlisted remote file into
 bounded process memory, submits one private Hub commit, and streams that immutable revision back
 for size/SHA-256 verification without a filesystem cache. It resolves Hugging Face credentials
@@ -137,7 +137,8 @@ only from standard local auth sources and never sends them over SSH. The manifes
 parent-commit race check, private visibility, model-card reporting, approvals, provenance,
 integrity, privacy, safety, and license constraints fail closed; the measured 0.95 target remains
 nonblocking for this Official tier. See [`REMOTE_WORKFLOW.md`](REMOTE_WORKFLOW.md#9-mirror-a-gated-release-privately)
-for its exact CLI and manifest contract. No uploader may fall back to downloading weights locally.
+for its exact CLI and manifest contract. Publication continues to stream the immutable remote
+release so a stale local mirror cannot alter what is uploaded.
 
 If a blind example, answer, or detailed failure is used for training, prompt selection,
 hyperparameter search, checkpoint selection, or error-driven retraining, the benchmark is no

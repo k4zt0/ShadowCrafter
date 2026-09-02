@@ -20,14 +20,19 @@ for root in "${FORBIDDEN_ROOTS[@]}"; do
     case "${path##*/}" in
       .gitkeep | .DS_Store) continue ;;
     esac
-    echo "local model/checkpoint custody violation: $path" >&2
+    echo "model/checkpoint file escaped the ignored local_mirror boundary: $path" >&2
     FOUND=1
   done < <(find "$root" -type f -print0)
 done
 
 if [[ "$FOUND" -ne 0 ]]; then
-  echo "model and checkpoint files must remain on approved remote storage" >&2
+  echo "store local model copies only below the gitignored local_mirror directory" >&2
   exit 1
 fi
 
-echo "local model/checkpoint custody check passed"
+if ! git check-ignore -q local_mirror/remote-project/model.safetensors; then
+  echo "local_mirror must remain excluded from Git" >&2
+  exit 1
+fi
+
+echo "local model archive isolation check passed"

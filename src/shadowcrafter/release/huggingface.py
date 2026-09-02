@@ -1,9 +1,8 @@
 """Hugging Face publication boundaries.
 
-The workstation must not materialize base-model or checkpoint weights, so the
-legacy directory uploader is intentionally disabled. The supported publisher in
-``remote_huggingface`` streams manifest-verified remote artifacts while keeping
-Hugging Face credentials local.
+The legacy directory uploader is intentionally disabled so a stale local mirror cannot
+become a release source. The supported publisher in ``remote_huggingface`` streams
+manifest-verified remote artifacts while keeping Hugging Face credentials local.
 """
 
 from __future__ import annotations
@@ -19,7 +18,7 @@ def publish_private_model(
 ) -> str:
     del repo_id, model_dir, evidence_path, gate_config
     raise RuntimeError(
-        "local weight publication is disabled by the workstation retention policy; "
-        "use an approved remote-stream publisher that verifies the remote manifest and "
+        "local directory publication is disabled by the immutable release policy; "
+        "use the approved remote-stream publisher that verifies the remote manifest and "
         "keeps the Hugging Face token local"
     )

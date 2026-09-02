@@ -62,6 +62,7 @@ samples/
 malware/
 
 # Local model artifacts. GitHub stores source; private Hugging Face repos mirror releases.
+local_mirror/
 artifacts/base_models/
 artifacts/checkpoints/
 artifacts/releases/

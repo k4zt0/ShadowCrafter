@@ -37,6 +37,7 @@ _REMOTE_PROJECT = Path("/root/ShadowCrafter")
 _SOURCE_ROOT = Path("/root/ShadowCrafter-source")
 _JOB_ROOT = _REMOTE_PROJECT / "artifacts/automation"
 _ITERATION_ROOT = _REMOTE_PROJECT / "artifacts/iterations/shadowcrafter-9b"
+_REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 _REPO_ID = "KaztoRay/ShadowCrafter-9B"
 _SHA40 = re.compile(r"^[0-9a-f]{40}$")
 _SAFE_VERSION = re.compile(r"^v[1-9][0-9]*\.0$")
@@ -134,18 +135,44 @@ def _remote_call(
     helper = _SOURCE_ROOT / revision / "scripts/automation/remote-worker.py"
     remote = (str(_REMOTE_PROJECT / ".venv/bin/python"), str(helper), *arguments)
     command = shlex.join(remote)
-    completed = subprocess.run(  # noqa: S603 - SSH argv and remote helper are fixed/pinned.
-        (*_ssh_prefix(key), command),
-        input=stdin,
-        capture_output=True,
+    deadline = time.monotonic() + 6 * 60 * 60
+    delay = 5
+    while True:
+        try:
+            completed = subprocess.run(  # noqa: S603 - fixed SSH and remote helper argv.
+                (*_ssh_prefix(key), command),
+                input=stdin,
+                capture_output=True,
+                check=False,
+                timeout=timeout,
+            )
+            if completed.returncode == 0:
+                return completed.stdout
+            returncode = completed.returncode
+        except subprocess.TimeoutExpired:
+            returncode = 255
+        if returncode != 255 or time.monotonic() >= deadline:
+            raise VersionWatcherError(
+                f"remote worker call failed ({arguments[0]}, exit={returncode})"
+            )
+        time.sleep(delay)
+        delay = min(60, delay * 2)
+
+
+def _sync_remote_project(key: Path) -> None:
+    script = _REPOSITORY_ROOT / "scripts/sync-from-remote.sh"
+    environment = os.environ.copy()
+    environment["SHADOWCRAFTER_SSH_KEY"] = str(key)
+    completed = subprocess.run(  # noqa: S603 - repository-owned fixed script.
+        (str(script),),
+        cwd=_REPOSITORY_ROOT,
+        env=environment,
+        stdin=subprocess.DEVNULL,
         check=False,
-        timeout=timeout,
+        timeout=86400,
     )
     if completed.returncode != 0:
-        raise VersionWatcherError(
-            f"remote worker call failed ({arguments[0]}, exit={completed.returncode})"
-        )
-    return completed.stdout
+        raise VersionWatcherError("completed remote project could not be mirrored locally")
 
 
 def _job(
@@ -470,6 +497,7 @@ def main() -> int:
                 local_version=local_version,
                 gate_config=gate_config,
             )
+            _sync_remote_project(key)
             print(
                 json.dumps(
                     {

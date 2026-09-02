@@ -57,18 +57,19 @@ private official release 업로드를 막지 않습니다. 생성형 보고서, 
 
 ## 로컬·원격 자산 보관
 
-사용자의 최신 보관 지침에 따라 로컬 PC에는 기반 모델과 체크포인트 가중치를
-저장하지 않습니다. 로컬은 소스·설정·데이터·평가 증거·manifest의 원본이며,
-모델 가중치는 승인된 원격 학습 서버와 private Hugging Face에 보관합니다.
+사용자의 최신 보관 지침에 따라 기반 모델, 체크포인트, 완료 가중치와 원격 프로젝트
+파일을 `local_mirror/`에 증분 보관합니다. 이 미러는 현재 소스 작업 트리를 덮어쓰지
+않으며 Git에서 강제로 제외됩니다. 원격 학습 서버와 private Hugging Face 사본도
+계속 유지합니다.
 
 | 자산 | 로컬 보관 | 비공개 원격 보관 |
 |---|---|---|
 | 소스, 설정, 문서, 소형 manifest | 이 Git 작업 트리와 로컬 Git 기록 | GitHub `Odytssey/ShadowCrafter` |
-| 기반 모델, 체크포인트, 최종 가중치 | 저장하지 않음; hash와 계보 manifest만 보관 | 원격 GPU와 9B private Hugging Face 저장소 |
+| 기반 모델, 체크포인트, 최종 가중치 | `local_mirror/remote-project/artifacts/` 비공개 미러 | 원격 GPU와 9B private Hugging Face 저장소 |
 | 원천·가공 데이터와 악성 샘플 | `data/` 아래의 접근 통제·격리 저장소 | 라이선스와 보안 검토가 허용할 때만 private 저장소 |
 | 평가 결과와 릴리스 증거 | 로컬 평가 번들과 checksum manifest | 필요한 비민감 자료만 9B private 모델 저장소 |
 
-Hugging Face 비공개 저장소는 `KaztoRay/ShadowCrafter-9B`만 사용합니다. 완성된 모델은 로컬로 복사하지 않고 원격에서 hash·안전 로딩·평가를 검증한 뒤 private Hub에 복제합니다. 로컬 manifest에는 원격 commit과 전체 checksum을 기록합니다. 가중치를 원격에서 지우기 전에는 서로 독립적인 원격 복구 사본과 복원 검증이 필요합니다.
+Hugging Face 비공개 저장소는 `KaztoRay/ShadowCrafter-9B`만 사용합니다. 완성된 모델은 원격에서 hash·안전 로딩·평가를 검증하고 private Hub에 복제한 뒤 로컬 프로젝트 미러에도 내려받습니다. 로컬 manifest에는 원격 commit과 전체 checksum을 기록합니다. 미러는 백업이 아니라 추가 보관 사본이며 원격 원본을 자동 삭제하지 않습니다.
 
 대용량 가중치·데이터·악성 샘플·비밀은 Git에 커밋하지 않습니다. 저장 구조, 동기화 순서, 복구 기준은 [docs/LOCAL_ARTIFACTS.md](docs/LOCAL_ARTIFACTS.md)를 따릅니다.
 
@@ -82,7 +83,8 @@ CTI-Bench 5,533건과의 exact/embedded 오염 검사를 통과했습니다. 소
 [docs/DATASET_EXPANSION.md](docs/DATASET_EXPANSION.md)에 기록합니다.
 
 원격 GPU 학습은 재현 가능한 고정 manifest로 실행하며, 로그·평가 번들·checksum
-manifest만 로컬로 회수합니다. 체크포인트 가중치는 로컬로 내려받지 않습니다.
+manifest와 평가 증거를 회수하고 완료된 체크포인트 및 원격 프로젝트 전체를
+`scripts/sync-from-remote.sh`로 로컬 미러에 증분 동기화합니다.
 SSH 키, Hugging Face 토큰, GitHub 토큰은 저장소나 학습 이미지에 포함하지 않습니다.
 
 ## 저장소와 릴리스 흐름
@@ -106,4 +108,4 @@ SSH 키, Hugging Face 토큰, GitHub 토큰은 저장소나 학습 이미지에 
 
 ShadowCrafter is a defensive-first cybersecurity LLM project developed by Odytssey and fine-tuned from Ornith-1.5-9B. Its intended uses include authorized vulnerability and CVE analysis, defensive malware triage, evidence-grounded reporting, security knowledge bases, and human-approved SIEM/SOAR assistance. Offensive evaluation is limited to explicitly authorized, isolated sandboxes; unauthorized access, malware development or deployment, credential theft, persistence, destructive actions, and evasion are prohibited.
 
-The local workstation is the source of truth for code, approved data, manifests, and evaluation evidence. At the operator's direction it does not retain base-model or checkpoint weights; those remain on approved remote storage and private per-model Hugging Face repositories with locally retained hashes and provenance. The “95%” value is a reported target for predeclared, leakage-free, task-specific metrics—not a universal accuracy claim or performance guarantee. Each completed version may be published as a clearly labeled private Official Release even below the target; integrity, safety, licensing, privacy, and provenance failures still block publication.
+The local workstation is the source of truth for code, approved data, manifests, and evaluation evidence. At the operator's direction it also retains an ignored, non-Git mirror of base models, checkpoints, completed weights, and the remote project under `local_mirror/`; approved remote storage and the private model repository remain authoritative publication copies. The “95%” value is a reported target for predeclared, leakage-free, task-specific metrics—not a universal accuracy claim or performance guarantee. Each completed version may be published as a clearly labeled private Official Release even below the target; integrity, safety, licensing, privacy, and provenance failures still block publication.

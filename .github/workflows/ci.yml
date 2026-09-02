@@ -49,5 +49,5 @@ jobs:
       - name: Validate model configurations
         run: python -m shadowcrafter.cli config validate configs/models/shadowcrafter-9b.yaml
 
-      - name: Enforce local weight-custody policy
+      - name: Enforce local model archive isolation
         run: scripts/check-local-weight-custody.sh

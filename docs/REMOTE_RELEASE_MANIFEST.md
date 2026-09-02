@@ -6,8 +6,8 @@ repository:
 - `KaztoRay/ShadowCrafter-9B`
 
 The JSON manifest and its five approval records are workstation-local control/evidence files.
-Model, base-model, adapter, checkpoint, and weight bytes remain on the approved remote host and
-are never materialized as workstation files. Before invoking the publisher, freeze the manifest
+Model, base-model, adapter, checkpoint, and weight bytes remain on the approved remote host for
+publication and may also be retained in the Git-ignored local mirror. Before invoking the publisher, freeze the manifest
 itself with an independently retained lowercase SHA-256 and supply that value through
 `--manifest-sha256`.
 

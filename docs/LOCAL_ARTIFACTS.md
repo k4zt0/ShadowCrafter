@@ -3,25 +3,28 @@
 ## 1. 목표
 
 ShadowCrafter의 소스, 데이터, manifest와 릴리스 증거는 로컬 PC에서 감사할 수
-있어야 합니다. 사용자의 최신 지침에 따라 기반 모델·체크포인트·최종 weight
-파일은 로컬에 보관하지 않으며, 승인된 원격 저장소에서 복구 가능해야 합니다.
+있어야 합니다. 사용자의 최신 지침에 따라 기반 모델·체크포인트·최종 weight와
+원격 프로젝트 전체를 Git에서 제외된 `local_mirror/`에도 보관합니다. 현재 소스
+작업 트리와 미러를 분리하고 승인된 원격 저장소의 복구 사본도 계속 유지합니다.
 
 현재 로컬 보관 범위는 다음과 같습니다.
 
 - 소스, 설정, 문서, lockfile과 manifest의 로컬 Git 이력
 - 허가된 각 데이터 snapshot의 실제 파일 또는 법적 제한이 있는 경우 접근 통제된 로컬 사본과 제한 기록
-- 기반 모델 revision, tokenizer revision, 원격 checkpoint와 릴리스의 전체 hash manifest
+- 기반 모델 revision, tokenizer revision, checkpoint와 릴리스의 실제 파일 및 전체 hash manifest
 - 평가 입력의 허용된 사본, 평가 결과, 안전성 증거, 로그와 보고서
 - 모든 파일을 연결하는 hash, provenance, 라이선스와 원격 commit 기록
 
-가중치가 원격에만 있으므로, 완료 표시는 두 개의 독립적인 승인 원격 사본과
-fresh-cache 복원 검증이 있을 때만 허용합니다. 로컬 manifest만으로 모델을 복구할
-수 있다고 표현하지 않습니다.
+완료 표시는 원격 정식 릴리스, Git에서 분리된 로컬 미러와 fresh-cache 복원 검증이
+있을 때만 허용합니다. 로컬 미러 하나만을 유일한 백업으로 취급하지 않습니다.
 
 ## 2. 권장 디렉터리
 
 ```text
 ShadowCrafter/
+├── local_mirror/
+│   ├── remote-project/       # 원격 프로젝트·모델·체크포인트 전체 미러
+│   └── source-snapshots/     # 원격 불변 Git source snapshot
 ├── artifacts/
 │   ├── evaluations/<model>/<run_id>/
 │   ├── manifests/<model>/<run_id>/
@@ -52,10 +55,10 @@ ShadowCrafter/
 |---|---|---|
 | 소스/설정/문서 | 작업 트리 + 로컬 Git object database | private GitHub 협업 복제 |
 | 데이터 | `data/snapshots/` + data manifest | 허용되는 경우에만 private 복제 |
-| 기반 모델 | 로컬에는 revision/hash manifest만 | 고정 upstream revision + 원격 cache |
-| run checkpoint | 로컬에는 run/file manifest만 | 원격 GPU + 승인된 독립 원격 사본 |
+| 기반 모델 | `local_mirror/remote-project/artifacts/base_models/` | 고정 upstream revision + 원격 cache |
+| run checkpoint | `local_mirror/remote-project/artifacts/checkpoints/` | 원격 GPU + private Hub 릴리스 |
 | 평가 | `artifacts/evaluations/` + evaluation card | 필요한 비민감 결과만 공유 |
-| 완료 모델 | 로컬에는 release/evaluation manifest만 | 9B private Hugging Face + 독립 원격 복구 사본 |
+| 완료 모델 | `local_mirror/remote-project/artifacts/releases/` | 9B private Hugging Face + 원격 복구 사본 |
 
 ## 4. 파일 명명과 불변성
 
@@ -102,12 +105,13 @@ manifest 자체도 hash하고 가능하면 별도의 서명 또는 신뢰 가능
 ### 검증 증거 회수와 원격 승격
 
 1. 완료 marker가 있는 run의 전체 파일 inventory와 SHA-256을 원격에서 생성합니다.
-2. manifest·로그·평가 증거만 로컬 staging으로 회수하고 hash를 비교합니다.
+2. manifest·로그·평가 증거를 로컬 staging으로 회수하고 hash를 비교합니다.
 3. shard index, tokenizer/config, 안전한 로딩과 추론 smoke test를 원격에서 검증합니다.
 4. 불완전하거나 불일치한 파일은 원격 격리하고 같은 경로에서 고치지 않습니다.
 5. 검증된 candidate만 immutable 원격 release 경로로 원자적으로 승격합니다.
-6. 모델 weight를 private Hugging Face 또는 승인된 독립 원격 저장소에 복제합니다.
-7. fresh-cache 복원과 전체 hash 검증 뒤에만 원격 임시 checkpoint 정리를 승인합니다.
+6. 모델 weight를 private Hugging Face에 복제합니다.
+7. 완료된 원격 프로젝트와 weight를 `local_mirror/`에 증분 동기화합니다.
+8. fresh-cache 복원과 전체 hash 검증 뒤에만 원격 임시 checkpoint 정리를 승인합니다.
 
 ## 7. GitHub와 Hugging Face 동기화
 
@@ -119,9 +123,9 @@ manifest 자체도 hash하고 가능하면 별도의 서명 또는 신뢰 가능
 
 게이트를 통과한 모델은 계열별 private 저장소에만 업로드합니다. 업로드 전에 원격
 release의 전체 inventory를 확인하고, 로컬 인증을 원격에 복사하지 않는 memory-only
-publisher로 하나의 parent-pinned commit을 생성합니다. 게시 직후에는 로컬 filesystem
-cache 없이 Hub byte stream을 검증하고, 이어서 fresh remote cache에서 받은 파일의
-hash를 로컬 manifest와 비교합니다. 데이터셋은 별도의
+publisher로 하나의 parent-pinned commit을 생성합니다. 게시 직후에는 로컬 미러를
+업로드 원본으로 신뢰하지 않고 Hub byte stream을 검증하며, 이어서 미러 파일의 hash를
+원격 manifest와 비교할 수 있습니다. 데이터셋은 별도의
 권리·개인정보·재배포 승인을 통과한 경우에만 분리된 private 저장소를 사용합니다.
 
 원격 저장소의 파일을 웹 UI에서 직접 수정하지 않습니다. 불가피한 model card 수정도 로컬에 먼저 반영하고 양쪽 commit을 lineage에 기록합니다.

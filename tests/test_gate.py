@@ -603,12 +603,14 @@ def test_gate_rejects_threshold_configuration_below_94_percent(tmp_path: Path) -
     assert "greater than or equal to 0.95" in result.failures[0]
 
 
-def test_local_weight_publisher_is_disabled_by_retention_policy(tmp_path: Path) -> None:
+def test_local_directory_publisher_is_disabled_by_immutable_release_policy(
+    tmp_path: Path,
+) -> None:
     evidence_path, config_path = _write_bundle(tmp_path, answers=["A", "B", "A", "B"])
     model_dir = tmp_path / "remote-model-reference-only"
     model_dir.mkdir()
 
-    with pytest.raises(RuntimeError, match="local weight publication is disabled"):
+    with pytest.raises(RuntimeError, match="local directory publication is disabled"):
         publish_private_model(
             "KaztoRay/ShadowCrafter-9B",
             model_dir,
