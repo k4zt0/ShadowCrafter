@@ -60,7 +60,8 @@ _TRAIN_SHA256 = "8b0be9434be7452bf8129650eec485a00d2ce3efabeb725dc2f81908e18b7c7
 _TRAIN_MANIFEST_SHA256 = "c40f7d9d24566b5e059d4f8450e9d6b07255ce79de86a6513fce1cb4db020c16"
 _DATASET_SHA256 = "5a8cfe0004244e75d39c680dbbba715290d12743d07e1d482b03250fe3783cb9"
 _BASE_MANIFEST_SHA256 = "9a8c8c0c909311654a8ced2181b838cfc6d1db08d82f81b841cefa9030178f94"
-_MODEL_CONFIG_SHA256 = "cbcdb0b8bede24f53bb0b366c0db4fc3400087fab793e9b11138e534d3d35610"
+_CANDIDATE_MODEL_CONFIG_SHA256 = "cbcdb0b8bede24f53bb0b366c0db4fc3400087fab793e9b11138e534d3d35610"
+_PROTOCOL_MODEL_CONFIG_SHA256 = "f0f29448392b3e5501bcc51cba4cb40a71764a63a33a4cdf0d1d0cf43118d253"
 _CASES_SHA256 = "2455b46b4851ed998ce3094ba7d9f796365bd0d71ce51264ff665f1c5203b423"
 _ADAPTER_MANIFEST_SHA256 = "42ceb7466cd7e8139ba019a52fbf82281e2e176fb455a9192e76588f8b1ff769"
 _SNAPSHOT_MANIFEST_SHA256 = "ce02c0c543950d5983cb2370ced5f7f949d59e09a8d0af40459b84f7704c1d79"
@@ -156,7 +157,11 @@ def _verify_static_inputs(loop_source: Path) -> None:
         (_TRAIN, _TRAIN_SHA256, "training records"),
         (_TRAIN_MANIFEST, _TRAIN_MANIFEST_SHA256, "training manifest"),
         (loop_source / _BASE_MANIFEST_RELATIVE, _BASE_MANIFEST_SHA256, "base manifest"),
-        (loop_source / _MODEL_CONFIG_RELATIVE, _MODEL_CONFIG_SHA256, "model config"),
+        (
+            loop_source / _MODEL_CONFIG_RELATIVE,
+            _PROTOCOL_MODEL_CONFIG_SHA256,
+            "protocol model config",
+        ),
         (_CTI_CASES, _CASES_SHA256, "CTIBench cases"),
         (_CTI_ADAPTER_MANIFEST, _ADAPTER_MANIFEST_SHA256, "CTIBench adapter manifest"),
         (_CTI_SNAPSHOT_MANIFEST, _SNAPSHOT_MANIFEST_SHA256, "CTIBench snapshot manifest"),
@@ -223,7 +228,7 @@ def _inference_request(
     environment_manifest: Path,
     output_dir: Path,
 ) -> dict[str, Any]:
-    config = candidate_source / _MODEL_CONFIG_RELATIVE
+    config = loop_source / _MODEL_CONFIG_RELATIVE
     base_manifest = candidate_source / _BASE_MANIFEST_RELATIVE
     training_manifest = checkpoint / "run-manifest.json"
     gate_config = loop_source / _GATE_CONFIG_RELATIVE
@@ -478,8 +483,8 @@ def _build_evidence(
         },
         "publication": {
             "release_tier": "Official Release",
-            "visibility": "private",
-            "public_release_requested": False,
+            "visibility": "public",
+            "public_release_requested": True,
             "commercial_release_requested": False,
             "quality_target_is_publication_blocker": False,
             "model_card_reports_evaluation": True,
@@ -515,7 +520,7 @@ def _model_card(version: str, checkpoint_sha: str, report: Mapping[str, Any]) ->
         "license": "other",
         "shadowcrafter_release": {
             "status": "Official Release",
-            "visibility": "private",
+            "visibility": "public",
             "commercial_use": False,
             "release_id": version,
             "repository": _MODEL_ID,
@@ -536,7 +541,7 @@ def _model_card(version: str, checkpoint_sha: str, report: Mapping[str, Any]) ->
         "# ShadowCrafter-9B Official Release\n\n"
         f"Version: `{version}`  \n"
         "Developed by Odytssey. Fine-tuned from ornith-ai/Ornith-1.5-9B.\n\n"
-        "This is a private, noncommercial Official Release for defensive cybersecurity "
+        "This is a public, noncommercial Official Release for defensive cybersecurity "
         "research. It is not a performance guarantee or authorization for unsanctioned access.\n\n"
         f"Frozen CTIBench accuracy: `{metrics['accuracy']:.6f}`  \n"
         f"Balanced accuracy: `{metrics['balanced_accuracy']:.6f}`  \n"
@@ -571,8 +576,8 @@ def _release_approval(
         "release_id": version,
         "candidate_checkpoint_sha256": checkpoint_sha,
         "remote_inventory_sha256": inventory_sha,
-        "private_official_release_authorized": True,
-        "public_release_authorized": False,
+        "private_official_release_authorized": False,
+        "public_release_authorized": True,
     }
     if name == "license":
         payload.update(
@@ -670,7 +675,7 @@ def _stage_release(
         "release_id": version,
         "repo_id": _MODEL_ID,
         "release_tier": "Official Release",
-        "visibility": "private",
+        "visibility": "public",
         "commercial_release": False,
         "candidate_checkpoint_sha256": checkpoint_sha,
         "remote_root": remote_root,
@@ -705,7 +710,7 @@ def main() -> int:
         _verify_static_inputs(protocol_source)
         _check_sha(
             source / _MODEL_CONFIG_RELATIVE,
-            _MODEL_CONFIG_SHA256,
+            _CANDIDATE_MODEL_CONFIG_SHA256,
             "candidate model config",
         )
         _check_sha(

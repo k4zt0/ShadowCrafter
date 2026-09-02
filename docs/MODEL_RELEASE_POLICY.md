@@ -2,7 +2,7 @@
 
 ## 1. 적용 모델
 
-이 정책은 다음 private 릴리스 계열과 그 checkpoint, adapter, quantization, merge 및 파생 artifact에 적용됩니다.
+이 정책은 다음 public noncommercial 릴리스 계열과 그 checkpoint, adapter, quantization, merge 및 파생 artifact에 적용됩니다.
 
 - **ShadowCrafter-9B** — Ornith-1.5-9B 기반
 
@@ -15,16 +15,18 @@
 | Run | 학습 중이거나 중단된 산출물 | 없음; 원격 GPU 임시 저장만 허용 |
 | Candidate | 원격에서 검증 중이며 로컬 manifest가 있는 checkpoint | 없음 |
 | Research | 학습 중간 산출물 또는 제한된 내부 평가용 | 승인된 내부 접근만, release 태그 금지 |
-| Official Release | 정확도 목표 달성 여부와 실제 점수를 명시한 immutable 정식 번들 | 9B private Hugging Face 저장소 |
-| Qualified Release | 선언한 품질 목표와 모든 필수 통제를 통과한 immutable 번들 | 9B private Hugging Face 저장소 |
+| Official Release | 정확도 목표 달성 여부와 실제 점수를 명시한 immutable 정식 번들 | 9B public Hugging Face 저장소 |
+| Qualified Release | 선언한 품질 목표와 모든 필수 통제를 통과한 immutable 번들 | 9B public Hugging Face 저장소 |
 | Withdrawn | 결함, 권리, 보안 또는 provenance 문제로 철회 | private 전환/접근 차단 및 정상 revision 안내 |
 
-Public 공개는 기본 범위가 아닙니다. 별도의 경영 승인, 기반 모델·데이터 라이선스 검토, 오용 위험 평가, 개인정보 검토와 배포 계획 없이는 저장소 가시성을 public으로 변경하지 않습니다.
+모델 저장소는 사용자의 공개 지시에 따라 public으로 운영합니다. 공개는 비상업 범위이며,
+기반 모델·데이터 라이선스, 오용 위험, 개인정보와 배포 검토를 모두 통과한 모델 파일만
+게시합니다. GitHub 소스, 평가 원문, predictions, 데이터와 운영 증거는 private로 유지합니다.
 
 ## 3. 95% 품질 목표와 의무 보고
 
 `0.95`는 사전에 선언한 **누수 없는 과제별 주 지표**의 목표이며 모델 전체에
-대한 하나의 “정확도”나 성능 보장이 아닙니다. 정확도는 private Official
+대한 하나의 “정확도”나 성능 보장이 아닙니다. 정확도는 public Official
 Release의 차단 조건이 아니며, 점수와 목표 달성 여부를 정직하게 표시하는
 보고 조건입니다.
 
@@ -57,7 +59,7 @@ balanced accuracy, recall, precision과 confusion matrix를 함께 공개합니�
 - compute budget, 데이터 권리, 안전성 또는 과적합 위험 때문에 유효한 개선이 없으면 “미달”로 종료합니다.
 
 자동 재학습, benchmark 점수 기반 후보 선택과 임계값 도달 때까지의 반복 실행은
-금지합니다. 목표 미달 모델도 private Official Release로 게시할 수 있지만,
+금지합니다. 목표 미달 모델도 public noncommercial Official Release로 게시할 수 있지만,
 `Qualified` 또는 `95% 달성` 표기는 실제 통과 증거가 있을 때만 허용합니다.
 
 ## 5. 필수 릴리스 게이트
@@ -74,7 +76,7 @@ balanced accuracy, recall, precision과 confusion matrix를 함께 공개합니�
 
 ### 권리와 개인정보
 
-- 기반 모델 및 각 데이터셋의 학습·파생·private 배포 조건 검토
+- 기반 모델 및 각 데이터셋의 학습·파생·public noncommercial 배포 조건 검토
 - 필요한 attribution, NOTICE, model card와 데이터 카드 포함
 - 비밀·PII scan 및 memorization/extraction 평가 통과
 - 삭제·철회 요청과 데이터 예외가 lineage에 반영됨
@@ -116,9 +118,9 @@ immutable 원격 릴리스 번들에는 최소한 다음이 있어야 합니다.
 
 소스 저장소의 Apache-2.0은 이 번들에 자동 적용되지 않습니다. 파생 가중치의 배포 조건은 upstream과 데이터 의무를 검토해 모델 카드와 별도 라이선스에 명시합니다.
 
-## 7. private Hugging Face 게시
+## 7. public Hugging Face 게시
 
-기본 목적지는 계정/조직과 이름 사용 가능성을 확인한 다음 private 저장소입니다.
+목적지는 계정/조직과 이름 사용 가능성을 확인한 public 저장소입니다.
 
 - `KaztoRay/ShadowCrafter-9B`
 
@@ -127,7 +129,7 @@ immutable 원격 릴리스 번들에는 최소한 다음이 있어야 합니다.
 1. candidate의 전체 manifest를 원격에서 생성하고 로컬로 회수합니다.
 2. hash, 격리 load, 라이선스, 데이터와 평가·안전성 게이트를 검증합니다.
 3. immutable 원격 release 경로로 승격합니다.
-4. private 가시성과 parent commit을 재확인하고, 로컬 토큰을 원격에 전달하지 않는
+4. public 가시성과 parent commit을 재확인하고, 로컬 토큰을 원격에 전달하지 않는
    manifest 검증 memory-only 스트리밍 publisher로 하나의 commit을 생성합니다.
 5. 게시된 immutable revision의 모든 파일을 로컬 filesystem cache 없이 스트리밍
    hash 검증하고, 별도의 fresh remote cache 복원 검사도 수행합니다.
@@ -136,7 +138,7 @@ immutable 원격 릴리스 번들에는 최소한 다음이 있어야 합니다.
 학습이 끝났다는 사실만으로 게시할 수 있는 것은 아닙니다. 무결성·안전성·권리·
 개인정보·계보 통제를 통과한 immutable 번들만 게시합니다. 정확도 목표 미달은
 `Official Release`와 실제 점수로 명시하되 게시를 막지 않습니다. 로컬 manifest는
-weight 사본이 아니므로 private Hub와 별도 승인 원격 위치의 복구 가능성을 모두 유지합니다.
+weight 사본이 아니므로 public Hub와 별도 승인 원격 위치의 복구 가능성을 모두 유지합니다.
 
 ## 8. 버전, 변경과 롤백
 

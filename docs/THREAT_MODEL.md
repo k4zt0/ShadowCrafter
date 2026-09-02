@@ -2,7 +2,7 @@
 
 ## 1. 목적과 범위
 
-이 문서는 ShadowCrafter의 로컬 개발 환경, 원격 GPU 학습 환경, 데이터 공급망, 모델 artifact, private GitHub/Hugging Face 저장소, 추론 서비스와 SIEM/SOAR 연동에서 예상되는 위협과 통제를 정의합니다. 보안 보증서가 아니며 아키텍처·데이터·도구 권한이 바뀔 때 갱신해야 합니다.
+이 문서는 ShadowCrafter의 로컬 개발 환경, 원격 GPU 학습 환경, 데이터 공급망, 모델 artifact, private GitHub와 public Hugging Face 저장소, 추론 서비스와 SIEM/SOAR 연동에서 예상되는 위협과 통제를 정의합니다. 보안 보증서가 아니며 아키텍처·데이터·도구 권한이 바뀔 때 갱신해야 합니다.
 
 공격 기법 평가는 대상 소유자의 명시적 허가를 받은 격리형 샌드박스로 제한합니다. 운영 환경에 대한 자율 공격과 악성코드 실행은 신뢰 경계 밖이며 지원하지 않습니다.
 
@@ -23,7 +23,7 @@
 3. **로컬 원본 → 원격 GPU:** 승인된 고정 manifest와 필요한 최소 데이터만 암호화 채널로 전송합니다.
 4. **원격 GPU → 로컬 증거 저장소:** 로그·평가·checksum manifest만 회수합니다. 모델 weight는 로컬로 복사하지 않습니다.
 5. **로컬 Git → private GitHub:** 소스·문서·소형 manifest만 push하며 비밀과 대용량 artifact는 제외합니다.
-6. **원격 릴리스 → private Hugging Face:** 게이트를 통과한 9B 모델 번들만 전용 저장소에 복제하고 로컬 manifest로 검증합니다.
+6. **원격 릴리스 → public Hugging Face:** 게이트를 통과한 비상업 9B 모델 번들만 전용 저장소에 복제하고 로컬 manifest로 검증합니다. 비공개 평가 증거와 데이터는 게시하지 않습니다.
 7. **사용자/보안 도구 → 모델 → 도구 제안:** 입력과 retrieval 문서는 비신뢰 데이터이며, 모델 출력은 권한이 없는 제안으로 취급합니다.
 
 로컬 PC는 소스·데이터·평가·manifest의 원본입니다. 모델 weight는 사용자 지침에

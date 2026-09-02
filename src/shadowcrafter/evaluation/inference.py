@@ -638,7 +638,7 @@ def _verify_model_config(request: InferenceRequest, content: bytes) -> None:
         or base.get("text_model_class") != request.model.text_model_class
         or base.get("trust_remote_code") is not False
         or release.get("hf_repo") != request.model.model_id
-        or release.get("private") is not True
+        or release.get("private") is not False
         or training.get("load_in_4bit") is not True
         or training.get("quant_type") != "nf4"
         or training.get("double_quant") is not True
@@ -825,9 +825,9 @@ def _verify_benchmark(
     if (
         gate.protocol != request.protocol
         or gate.quality_target_is_publication_blocker
-        or gate.authorization_scope != "noncommercial-private-official-release"
+        or gate.authorization_scope != "noncommercial-public-official-release"
         or gate.commercial_use_permitted
-        or gate.required_visibility != "private"
+        or gate.required_visibility != "public"
         or rule.repository_id != benchmark.repository_id
         or rule.upstream_revision != benchmark.upstream_revision
         or rule.license_id != benchmark.license_id

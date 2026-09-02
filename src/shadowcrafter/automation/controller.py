@@ -400,11 +400,11 @@ class AutomationController:
             payload = json.loads(raw)
             if (
                 not isinstance(payload, dict)
-                or payload.get("visibility") != "private"
+                or payload.get("visibility") != "public"
                 or payload.get("release_tier") != "Official Release"
                 or not isinstance(payload.get("commit_sha"), str)
             ):
-                raise AutomationError("publisher did not return a verified private release receipt")
+                raise AutomationError("publisher did not return a verified public release receipt")
             receipt_path = self._runtime_path(task.publish_receipt.path)
             atomic_write_bytes(
                 receipt_path,

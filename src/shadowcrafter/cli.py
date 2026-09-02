@@ -105,7 +105,7 @@ def run_gate(
             result.report.get("quality_target_met") if result.report is not None else None
         )
         console.print(
-            "[green]private Official Release integrity gate passed[/green]; "
+            "[green]public Official Release integrity gate passed[/green]; "
             f"target_95_met={str(quality_target_met).lower()}"
         )
         return
@@ -125,7 +125,7 @@ def publish_remote_official(
         typer.Option("--gate-config"),
     ] = Path("configs/eval/release-gates.yaml"),
 ) -> None:
-    """Stream an exact remote bundle into one private Hugging Face commit."""
+    """Stream an exact remote bundle into one public Hugging Face commit."""
 
     from shadowcrafter.release.remote_huggingface import (
         publish_remote_official_release,

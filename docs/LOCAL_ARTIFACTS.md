@@ -56,9 +56,9 @@ ShadowCrafter/
 | 소스/설정/문서 | 작업 트리 + 로컬 Git object database | private GitHub 협업 복제 |
 | 데이터 | `data/snapshots/` + data manifest | 허용되는 경우에만 private 복제 |
 | 기반 모델 | `local_mirror/remote-project/artifacts/base_models/` | 고정 upstream revision + 원격 cache |
-| run checkpoint | `local_mirror/remote-project/artifacts/checkpoints/` | 원격 GPU + private Hub 릴리스 |
+| run checkpoint | `local_mirror/remote-project/artifacts/checkpoints/` | 원격 GPU + public Hub 릴리스 |
 | 평가 | `artifacts/evaluations/` + evaluation card | 필요한 비민감 결과만 공유 |
-| 완료 모델 | `local_mirror/remote-project/artifacts/releases/` | 9B private Hugging Face + 원격 복구 사본 |
+| 완료 모델 | `local_mirror/remote-project/artifacts/releases/` | 9B public Hugging Face + 원격 복구 사본 |
 
 ## 4. 파일 명명과 불변성
 
@@ -78,7 +78,7 @@ release manifest에는 다음을 포함합니다.
 - training run ID, seed, 핵심 hyperparameter와 완료 상태
 - 상대 경로, 바이트 크기, SHA-256을 가진 전체 파일 목록
 - 평가·안전성·라이선스 검토 상태와 승인자
-- GitHub/Hugging Face private 저장소와 원격 commit SHA(게시 후)
+- private GitHub, public Hugging Face와 원격 commit SHA(게시 후)
 - 생성 시각, schema version, 이전/rollback release
 
 manifest 자체도 hash하고 가능하면 별도의 서명 또는 신뢰 가능한 투명성 기록으로 보호합니다. 임의 pickle처럼 로딩 시 코드를 실행할 수 있는 형식은 피하고 안전한 직렬화 형식을 우선합니다.
@@ -109,7 +109,7 @@ manifest 자체도 hash하고 가능하면 별도의 서명 또는 신뢰 가능
 3. shard index, tokenizer/config, 안전한 로딩과 추론 smoke test를 원격에서 검증합니다.
 4. 불완전하거나 불일치한 파일은 원격 격리하고 같은 경로에서 고치지 않습니다.
 5. 검증된 candidate만 immutable 원격 release 경로로 원자적으로 승격합니다.
-6. 모델 weight를 private Hugging Face에 복제합니다.
+6. 모델 weight를 public Hugging Face에 복제합니다.
 7. 완료된 원격 프로젝트와 weight를 `local_mirror/`에 증분 동기화합니다.
 8. fresh-cache 복원과 전체 hash 검증 뒤에만 원격 임시 checkpoint 정리를 승인합니다.
 
@@ -119,9 +119,9 @@ manifest 자체도 hash하고 가능하면 별도의 서명 또는 신뢰 가능
 
 소스, 설정, 테스트, 문서와 비민감 manifest만 `Odytssey/ShadowCrafter`에 커밋합니다. 가중치, 데이터, 악성 샘플, 생성 보고서, 키와 토큰은 커밋하지 않습니다. push 전 저장소 소유자와 `Private` 가시성을 확인하고, branch protection과 최소 권한을 적용합니다.
 
-### private Hugging Face
+### public Hugging Face
 
-게이트를 통과한 모델은 계열별 private 저장소에만 업로드합니다. 업로드 전에 원격
+게이트를 통과한 모델은 계열별 public 저장소에 업로드합니다. 업로드 전에 원격
 release의 전체 inventory를 확인하고, 로컬 인증을 원격에 복사하지 않는 memory-only
 publisher로 하나의 parent-pinned commit을 생성합니다. 게시 직후에는 로컬 미러를
 업로드 원본으로 신뢰하지 않고 Hub byte stream을 검증하며, 이어서 미러 파일의 hash를

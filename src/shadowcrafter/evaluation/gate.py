@@ -201,11 +201,11 @@ class BlockingReviewEvidence(_StrictModel):
 
 
 class OfficialPublicationEvidence(_StrictModel):
-    """Private official publication controls; quality is deliberately non-blocking."""
+    """Public official publication controls; quality is deliberately non-blocking."""
 
     release_tier: Literal["Official Release"]
-    visibility: Literal["private"]
-    public_release_requested: Literal[False]
+    visibility: Literal["public"]
+    public_release_requested: Literal[True]
     commercial_release_requested: Literal[False]
     quality_target_is_publication_blocker: Literal[False]
     model_card_reports_evaluation: Literal[True]
@@ -309,11 +309,11 @@ class StrictReleaseGateConfig(_StrictModel):
     evaluator_version: str = Field(pattern=_SAFE_IDENTIFIER_PATTERN)
     require_clean_git: Literal[True]
     quality_target_is_publication_blocker: Literal[False]
-    authorization_scope: Literal["noncommercial-private-official-release"]
+    authorization_scope: Literal["noncommercial-public-official-release"]
     commercial_use_permitted: Literal[False]
     model_publication_authorized: Literal[True]
-    required_visibility: Literal["private"]
-    public_publication_authorized: Literal[False]
+    required_visibility: Literal["public"]
+    public_publication_authorized: Literal[True]
     release_tier: Literal["Official Release"]
     benchmark: BenchmarkRule
     allowed_candidates: dict[Literal["ShadowCrafter-9B"], CandidateRule] = Field(

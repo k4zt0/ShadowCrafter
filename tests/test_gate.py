@@ -281,11 +281,11 @@ def _write_bundle(
             "evaluator_version": "shadowcrafter-ctibench-evaluator-v1",
             "require_clean_git": True,
             "quality_target_is_publication_blocker": False,
-            "authorization_scope": "noncommercial-private-official-release",
+            "authorization_scope": "noncommercial-public-official-release",
             "commercial_use_permitted": False,
             "model_publication_authorized": True,
-            "required_visibility": "private",
-            "public_publication_authorized": False,
+            "required_visibility": "public",
+            "public_publication_authorized": True,
             "release_tier": "Official Release",
             "benchmark": {
                 "benchmark_id": "ctibench",
@@ -411,8 +411,8 @@ def _write_bundle(
         },
         "publication": {
             "release_tier": "Official Release",
-            "visibility": "private",
-            "public_release_requested": False,
+            "visibility": "public",
+            "public_release_requested": True,
             "commercial_release_requested": False,
             "quality_target_is_publication_blocker": False,
             "model_card_reports_evaluation": True,
@@ -477,8 +477,8 @@ def test_frozen_release_gate_recomputes_metrics_and_class_results(tmp_path: Path
     assert result.report["target_95_met"] is True
     assert result.report["authorization"]["commercial_use_permitted"] is False
     assert result.report["authorization"]["model_publication_authorized"] is True
-    assert result.report["authorization"]["required_visibility"] == "private"
-    assert result.report["authorization"]["public_publication_authorized"] is False
+    assert result.report["authorization"]["required_visibility"] == "public"
+    assert result.report["authorization"]["public_publication_authorized"] is True
 
 
 def test_quality_shortfall_is_reported_but_does_not_block_official_release(

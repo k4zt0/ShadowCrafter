@@ -34,7 +34,7 @@ def _local_hub_auth(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 class FakeApi:
-    def __init__(self, *, parent: str, commit: str, private_before: bool = True) -> None:
+    def __init__(self, *, parent: str, commit: str, private_before: bool = False) -> None:
         self.parent = parent
         self.commit = commit
         self.private_before = private_before
@@ -44,7 +44,7 @@ class FakeApi:
         revision = kwargs.get("revision")
         if revision is None:
             return SimpleNamespace(private=self.private_before, sha=self.parent)
-        return SimpleNamespace(private=True, sha=revision)
+        return SimpleNamespace(private=False, sha=revision)
 
     def create_commit(self, _repo_id: str, operations: object, **kwargs: Any) -> object:
         self.commit_calls.append({"operations": list(operations), **kwargs})
@@ -68,8 +68,8 @@ def _approval_payload(
         "release_id": "exp-v1",
         "candidate_checkpoint_sha256": checkpoint,
         "remote_inventory_sha256": inventory_sha256,
-        "private_official_release_authorized": True,
-        "public_release_authorized": False,
+        "private_official_release_authorized": False,
+        "public_release_authorized": True,
     }
     if name == "license":
         payload.update(
@@ -110,7 +110,7 @@ def _model_card(
         "license": "other",
         "shadowcrafter_release": {
             "status": "Official Release",
-            "visibility": "private",
+            "visibility": "public",
             "commercial_use": False,
             "release_id": "exp-v1",
             "repository": "KaztoRay/ShadowCrafter-9B",
@@ -132,7 +132,7 @@ def _bundle(
     release_id = "exp-v1"
     parent = "a" * 40
     checkpoint = "b" * 64
-    reason = "Evaluation is scheduled after this engineering-only private upload."
+    reason = "Evaluation is scheduled after this engineering-only public upload."
     card = _model_card(
         evaluation_status="measured" if measured_report is not None else "not-yet-evaluated",
         reason=reason,
@@ -184,7 +184,7 @@ def _bundle(
         "release_id": release_id,
         "repo_id": "KaztoRay/ShadowCrafter-9B",
         "release_tier": "Official Release",
-        "visibility": "private",
+        "visibility": "public",
         "commercial_release": False,
         "parent_commit": parent,
         "candidate_checkpoint_sha256": checkpoint,
@@ -236,15 +236,15 @@ def _report(*, quality_target_met: bool) -> dict[str, Any]:
         "quality_target_met": quality_target_met,
         "authorization": {
             "model_publication_authorized": True,
-            "required_visibility": "private",
-            "public_publication_authorized": False,
+            "required_visibility": "public",
+            "public_publication_authorized": True,
             "release_tier": "Official Release",
             "commercial_use_permitted": False,
         },
     }
 
 
-def test_not_yet_evaluated_private_release_is_one_verified_memory_commit(tmp_path: Path) -> None:
+def test_not_yet_evaluated_public_release_is_one_verified_memory_commit(tmp_path: Path) -> None:
     manifest_path, _evidence_path, remote_files = _bundle(tmp_path)
     key_path = _key(tmp_path)
     manifest_pin = _manifest_pin(manifest_path)
@@ -293,7 +293,7 @@ def test_not_yet_evaluated_private_release_is_one_verified_memory_commit(tmp_pat
     assert before_files == after_files
 
 
-def test_measured_accuracy_shortfall_does_not_block_private_official_release(
+def test_measured_accuracy_shortfall_does_not_block_public_official_release(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     report = _report(quality_target_met=False)
@@ -322,7 +322,7 @@ def test_measured_accuracy_shortfall_does_not_block_private_official_release(
     assert len(api.commit_calls) == 1
 
 
-def test_public_repo_or_parent_race_blocks_before_remote_bytes(tmp_path: Path) -> None:
+def test_private_repo_or_parent_race_blocks_before_remote_bytes(tmp_path: Path) -> None:
     manifest_path, _evidence_path, _remote_files = _bundle(tmp_path)
     manifest_pin = _manifest_pin(manifest_path)
     manifest, _ = load_remote_release_manifest(manifest_path, manifest_pin)
@@ -333,12 +333,12 @@ def test_public_repo_or_parent_race_blocks_before_remote_bytes(tmp_path: Path) -
         calls += 1
         return b""
 
-    with pytest.raises(ValueError, match="not private"):
+    with pytest.raises(ValueError, match="not public"):
         publish_remote_official_release(
             manifest_path,
             manifest_sha256=manifest_pin,
             ssh_key=_key(tmp_path),
-            api=FakeApi(parent=manifest.parent_commit, commit="c" * 40, private_before=False),
+            api=FakeApi(parent=manifest.parent_commit, commit="c" * 40, private_before=True),
             remote_reader=reader,
         )
     assert calls == 0

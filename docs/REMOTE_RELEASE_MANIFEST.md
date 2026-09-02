@@ -1,6 +1,6 @@
 # Remote Official Release manifest contract
 
-This contract is intentionally narrow. It supports only this existing private model
+This contract is intentionally narrow. It supports only this existing public model
 repository:
 
 - `KaztoRay/ShadowCrafter-9B`
@@ -23,9 +23,9 @@ sorted lexicographically by `path` with no duplicate path:
   "release_id": "<path-safe-immutable-id>",
   "repo_id": "KaztoRay/ShadowCrafter-9B",
   "release_tier": "Official Release",
-  "visibility": "private",
+  "visibility": "public",
   "commercial_release": false,
-  "parent_commit": "<current-private-Hub-main-commit>",
+  "parent_commit": "<current-public-Hub-main-commit>",
   "candidate_checkpoint_sha256": "<64-lowercase-hex>",
   "remote_root": "/root/ShadowCrafter/artifacts/releases/shadowcrafter-9b/<release-id>",
   "ssh": {
@@ -78,7 +78,7 @@ A measured release replaces the evaluation object with:
 That evidence must pass the integrity/contamination/review gate and be bound to this repository
 and checkpoint. Its measured accuracy, balanced accuracy, macro-F1, benchmark identity/revision/
 hash, sample count, and `quality_target_met` must be reproduced exactly in the model card. A false
-quality target is nonblocking for this private Official tier.
+quality target is nonblocking for this public noncommercial Official tier.
 
 ## Approval records
 
@@ -102,8 +102,8 @@ shape (with its own exact `review` value):
   "release_id": "<release-id>",
   "candidate_checkpoint_sha256": "<candidate-sha256>",
   "remote_inventory_sha256": "<canonical-inventory-sha256>",
-  "private_official_release_authorized": true,
-  "public_release_authorized": false
+  "private_official_release_authorized": false,
+  "public_release_authorized": true
 }
 ```
 
@@ -125,5 +125,5 @@ YAML null and the body includes the exact manifest reason. For `measured`, the e
 contains exact `benchmark`, `revision`, `dataset_sha256`, `sample_count`, `accuracy`,
 `balanced_accuracy`, `macro_f1`, and `quality_target_met` values from the frozen gate report.
 
-See [`REMOTE_WORKFLOW.md`](REMOTE_WORKFLOW.md#9-mirror-a-gated-release-privately) for the command,
+See [`REMOTE_WORKFLOW.md`](REMOTE_WORKFLOW.md#9-mirror-a-gated-release-publicly) for the command,
 authentication, one-commit, post-upload verification, and recovery procedure.

@@ -154,7 +154,7 @@ def _fixture(tmp_path: Path) -> tuple[Path, str, Path, Path]:
                     "double_quant": True,
                     "compute_dtype": "bfloat16",
                 },
-                "release": {"hf_repo": "KaztoRay/ShadowCrafter-9B", "private": True},
+                "release": {"hf_repo": "KaztoRay/ShadowCrafter-9B", "private": False},
             },
             sort_keys=False,
         )
@@ -251,7 +251,7 @@ def _fixture(tmp_path: Path) -> tuple[Path, str, Path, Path]:
     gate = {
         "schema_version": 2,
         "protocol": "shadowcrafter-frozen-release-evaluation-v1",
-        "claim": "Fixture noncommercial private evaluation.",
+        "claim": "Fixture noncommercial public evaluation.",
         "metric_thresholds": {"accuracy": 0.95, "balanced_accuracy": 0.95, "macro_f1": 0.95},
         "require_per_task_metrics": True,
         "max_contamination_overlap_count": 0,
@@ -259,11 +259,11 @@ def _fixture(tmp_path: Path) -> tuple[Path, str, Path, Path]:
         "evaluator_version": "shadowcrafter-ctibench-evaluator-v1",
         "require_clean_git": True,
         "quality_target_is_publication_blocker": False,
-        "authorization_scope": "noncommercial-private-official-release",
+        "authorization_scope": "noncommercial-public-official-release",
         "commercial_use_permitted": False,
         "model_publication_authorized": True,
-        "required_visibility": "private",
-        "public_publication_authorized": False,
+        "required_visibility": "public",
+        "public_publication_authorized": True,
         "release_tier": "Official Release",
         "benchmark": {
             "benchmark_id": "ctibench",

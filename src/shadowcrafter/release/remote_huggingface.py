@@ -1,4 +1,4 @@
-"""Memory-only remote artifact publication to private Hugging Face repositories.
+"""Memory-only remote artifact publication to the public ShadowCrafter model repository.
 
 Model bytes are read from an immutable remote release directory through a fixed
 SSH command, verified against a local allowlist manifest, and submitted in one
@@ -171,7 +171,7 @@ class RemoteReleaseManifest(_StrictModel):
     release_id: str = Field(pattern=_RELEASE_ID)
     repo_id: Literal["KaztoRay/ShadowCrafter-9B"]
     release_tier: Literal["Official Release"]
-    visibility: Literal["private"]
+    visibility: Literal["public"]
     commercial_release: Literal[False]
     parent_commit: str = Field(pattern=_COMMIT)
     candidate_checkpoint_sha256: str = Field(pattern=_SHA256)
@@ -243,7 +243,7 @@ class PublishResult:
             "quality_target_met": self.quality_target_met,
             "total_bytes": self.total_bytes,
             "file_count": self.file_count,
-            "visibility": "private",
+            "visibility": "public",
             "release_tier": "Official Release",
         }
 
@@ -389,8 +389,8 @@ def _verify_approvals(manifest: RemoteReleaseManifest, root: Path) -> dict[str, 
             or payload.get("release_id") != manifest.release_id
             or payload.get("candidate_checkpoint_sha256") != manifest.candidate_checkpoint_sha256
             or payload.get("remote_inventory_sha256") != inventory_sha256
-            or payload.get("private_official_release_authorized") is not True
-            or payload.get("public_release_authorized") is not False
+            or payload.get("private_official_release_authorized") is not False
+            or payload.get("public_release_authorized") is not True
         ):
             raise ValueError(f"{name} approval is missing, failed, or bound to another release")
         if name == "license" and (
@@ -565,12 +565,12 @@ def _evaluation_report(
     if (
         not isinstance(authorization, Mapping)
         or authorization.get("model_publication_authorized") is not True
-        or authorization.get("required_visibility") != "private"
-        or authorization.get("public_publication_authorized") is not False
+        or authorization.get("required_visibility") != "public"
+        or authorization.get("public_publication_authorized") is not True
         or authorization.get("release_tier") != "Official Release"
         or authorization.get("commercial_use_permitted") is not False
     ):
-        raise ValueError("evaluation evidence does not authorize private Official Release")
+        raise ValueError("evaluation evidence does not authorize public Official Release")
     if not isinstance(result.report.get("quality_target_met"), bool):
         raise ValueError("evaluation report must explicitly report quality_target_met")
     return result.report
@@ -602,14 +602,14 @@ def _validate_model_card(
         raise ValueError("model card lacks machine-readable release/evaluation metadata")
     if (
         release.get("status") != "Official Release"
-        or release.get("visibility") != "private"
+        or release.get("visibility") != "public"
         or release.get("commercial_use") is not False
         or release.get("release_id") != manifest.release_id
         or release.get("repository") != manifest.repo_id
         or release.get("candidate_checkpoint_sha256") != manifest.candidate_checkpoint_sha256
         or "Official Release" not in body
     ):
-        raise ValueError("model card must prominently identify a private Official Release")
+        raise ValueError("model card must prominently identify a public Official Release")
     if report is None:
         if (
             evaluation.get("status") != "not-yet-evaluated"
@@ -706,7 +706,7 @@ def publish_remote_official_release(
     hub_streamer: HubStreamer = _default_hub_stream,
     operation_factory: OperationFactory = _default_operation,
 ) -> PublishResult:
-    """Publish one manifest-verified private Official Release without local weight files."""
+    """Publish one manifest-verified public Official Release without local weight files."""
 
     manifest, observed_manifest_sha256 = load_remote_release_manifest(
         manifest_path,
@@ -725,8 +725,8 @@ def publish_remote_official_release(
         api = HfApi(endpoint=_HF_ENDPOINT, token=hub_token)
 
     before = api.model_info(manifest.repo_id, token=hub_token, files_metadata=False)
-    if getattr(before, "private", None) is not True:
-        raise ValueError("destination repository is not private before publication")
+    if getattr(before, "private", None) is not False:
+        raise ValueError("destination repository is not public before publication")
     if getattr(before, "sha", None) != manifest.parent_commit:
         raise ValueError("destination parent commit changed; refusing a raced publication")
 
@@ -767,8 +767,8 @@ def publish_remote_official_release(
         token=hub_token,
         files_metadata=False,
     )
-    if getattr(after, "private", None) is not True or getattr(after, "sha", None) != commit_sha:
-        raise RuntimeError("destination repository lost private visibility or commit identity")
+    if getattr(after, "private", None) is not False or getattr(after, "sha", None) != commit_sha:
+        raise RuntimeError("destination repository lost public visibility or commit identity")
 
     for entry in manifest.files:
         digest = hashlib.sha256()

@@ -2,9 +2,9 @@ release_gate:
   schema_version: 2
   protocol: shadowcrafter-frozen-release-evaluation-v1
   claim: >-
-    Noncommercial private Official Release evaluation: report accuracy,
+    Noncommercial public Official Release evaluation: report accuracy,
     balanced accuracy, and macro-F1 against the 95% target overall and on every
-    fixed task. Missing the quality target does not block private publication.
+    fixed task. Missing the quality target does not block public publication.
   metric_thresholds:
     accuracy: 0.95
     balanced_accuracy: 0.95
@@ -15,11 +15,11 @@ release_gate:
   evaluator_version: shadowcrafter-ctibench-evaluator-v1
   require_clean_git: true
   quality_target_is_publication_blocker: false
-  authorization_scope: noncommercial-private-official-release
+  authorization_scope: noncommercial-public-official-release
   commercial_use_permitted: false
   model_publication_authorized: true
-  required_visibility: private
-  public_publication_authorized: false
+  required_visibility: public
+  public_publication_authorized: true
   release_tier: Official Release
   benchmark:
     benchmark_id: ctibench

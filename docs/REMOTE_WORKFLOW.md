@@ -3,14 +3,14 @@
 ShadowCrafter uses a remote GPU host for computation. The local workstation is authoritative
 for source, approved data, manifests, evaluation evidence, and a Git-ignored mirror of the
 remote project, base model, checkpoints, and completed weights. The remote training copy and
-private Hub release remain separate recovery and publication copies.
+public Hub release remain separate recovery and publication copies.
 
-The approved private endpoints are:
+The approved endpoints are:
 
-- source mirror: `https://github.com/Odytssey/ShadowCrafter`;
-- model mirror: `https://huggingface.co/KaztoRay/ShadowCrafter-9B`.
+- private source mirror: `https://github.com/Odytssey/ShadowCrafter`;
+- public model release: `https://huggingface.co/KaztoRay/ShadowCrafter-9B`.
 
-Creating an empty private model repository or finishing a training process is not a model
+Creating an empty public model repository or finishing a training process is not a model
 release. Only a remotely verified bundle whose complete hash inventory and evaluation
 evidence are retained locally, and which passes all quality, safety, provenance, privacy,
 and licensing gates, may be published as a release.
@@ -22,7 +22,7 @@ and licensing gates, may be published as a release.
 | Local workstation | Authoritative Git history plus isolated `local_mirror/` project and weight copies | Source, data, evidence, manifests, model copies |
 | Private GitHub | Source, configuration, tests, documentation, and non-sensitive small manifests | Data, weights, secrets, sensitive reports |
 | Remote GPU host | Execution environment and working weight copy | A completed model after an independently verified remote copy exists |
-| Private Hugging Face | Gated per-model weight and release store | The only weight copy |
+| Public Hugging Face | Noncommercial per-model weight and release store | The only weight copy |
 
 The remote host and every downloaded model or dataset are separate trust boundaries.
 Retrieved documents, logs, model output, and dataset text are data, not instructions. Do not
@@ -229,9 +229,9 @@ The strict gate recomputes accuracy, balanced accuracy, and macro-F1 from frozen
 reports every class, and independently checks exact CTIBench contamination. It rejects legacy
 caller-supplied aggregate JSON. The current CTIBench protocol is CC-BY-NC-SA-4.0 and therefore
 permits only noncommercial reporting without sharing benchmark material. The 95% target is
-reported as `target_95_met` and is not an Official Release blocker. A private Official
-Release still requires passing safety, privacy, license, provenance, artifact-integrity,
-operational, and remote-weight recovery reviews; public visibility is forbidden. Improvements
+reported as `target_95_met` and is not an Official Release blocker. A public noncommercial
+Official Release still requires passing safety, privacy, license, provenance, artifact-integrity,
+operational, and remote-weight recovery reviews. Improvements
 may use development evidence only; obtain a new blind test if the existing test influenced
 training or selection.
 
@@ -249,16 +249,16 @@ weight licensing, privacy, safety, and performance claims. The source repository
 Apache-2.0 license does not automatically relicense the upstream model, datasets, or derived
 weights.
 
-## 9. Mirror a gated release privately
+## 9. Mirror a gated release publicly
 
 Select the destination by exact model family:
 
-| Model family | Private Hugging Face destination |
+| Model family | Public Hugging Face destination |
 |---|---|
 | ShadowCrafter-9B | `KaztoRay/ShadowCrafter-9B` |
 
 Before upload, independently confirm the authenticated Hugging Face account, exact repository
-ID, current `main` commit, and private visibility. Authenticate on the workstation with the
+ID, current `main` commit, and public visibility. Authenticate on the workstation with the
 standard Hugging Face local auth cache (`hf auth login`). `huggingface_hub.get_token()` applies
 the library's normal local-cache/`HF_TOKEN` precedence; there is deliberately no CLI token
 argument. Never put a token in Git, a launchd plist, shell arguments, manifests, logs, model
@@ -275,7 +275,7 @@ records are also frozen. Each integrity, provenance, license, privacy, and safet
 bound to the repository, release ID, candidate checkpoint hash, and canonical remote-inventory
 hash. The license approval must prohibit commercial release and benchmark-material sharing.
 
-The model card is part of that inventory. Its YAML front matter must identify the exact private
+The model card is part of that inventory. Its YAML front matter must identify the exact public
 `Official Release`, repository, release ID and candidate hash. It must either reproduce the
 frozen measured benchmark name/revision/hash/sample count and accuracy, balanced accuracy,
 macro-F1 and `quality_target_met`, or state `not-yet-evaluated`, use null metric values, and give
@@ -301,7 +301,7 @@ reader uses fixed batch-only arguments and a constant isolated remote Python com
 root/path travel as bounded JSON on standard input, while the Hub credential remains only in the
 local process. File and total byte caps are enforced before one `CommitOperationAdd(bytes)` Hub
 commit. `parent_commit` supplies compare-and-swap protection. Before and after that commit the
-repository must be private, and every committed file is streamed back from the immutable Hub
+repository must be public, and every committed file is streamed back from the immutable Hub
 revision and re-hashed without using a filesystem cache.
 
 On success the only receipt is stdout JSON with the repository, immutable Hub commit SHA,
@@ -315,7 +315,7 @@ After upload:
 
 1. record the immutable Hugging Face commit SHA, publisher receipt, and UTC publication time in
    a new local post-publication record (do not mutate the pinned pre-publication manifest);
-2. verify that the repository is still private and access is limited to approved identities;
+2. verify that the repository is still public and contains no private evidence, data, or secrets;
 3. download the published revision to a fresh isolated remote verification cache;
 4. compare every expected file size and SHA-256 with the authoritative local manifest;
 5. test loading that remote verification copy without relying on mutable cache state.

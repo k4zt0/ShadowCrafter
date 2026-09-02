@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Evaluate and publish the completed private ShadowCrafter-9B candidate once."""
+"""Evaluate and publish the completed public ShadowCrafter-9B candidate once."""
 
 from __future__ import annotations
 
@@ -384,8 +384,8 @@ def _publish(
         raise VersionWatcherError("ready evidence belongs to another version")
     api = HfApi(token=get_token())
     before = api.model_info(_REPO_ID, files_metadata=False)
-    if before.private is not True or not isinstance(before.sha, str):
-        raise VersionWatcherError("Hugging Face repository is not private or has no parent SHA")
+    if before.private is not False or not isinstance(before.sha, str):
+        raise VersionWatcherError("Hugging Face repository is not public or has no parent SHA")
     publication = local_version / "publication"
     approvals = {
         name: {
@@ -399,7 +399,7 @@ def _publish(
         "release_id": version,
         "repo_id": _REPO_ID,
         "release_tier": "Official Release",
-        "visibility": "private",
+        "visibility": "public",
         "commercial_release": False,
         "parent_commit": before.sha,
         "candidate_checkpoint_sha256": ready["candidate_checkpoint_sha256"],
