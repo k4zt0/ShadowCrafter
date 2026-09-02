@@ -1,4 +1,4 @@
-"""Fail-closed version and quality policy for repeated ShadowCrafter-9B runs."""
+"""Fail-closed quality reporting policy for the ShadowCrafter-9B release."""
 
 from __future__ import annotations
 
@@ -42,23 +42,6 @@ def version_index(version: str) -> int:
     return int(match.group(1))
 
 
-def training_overrides(index: int) -> dict[str, int | float]:
-    """Return a bounded, deterministic search schedule without benchmark-derived data."""
-
-    version_for(index)
-    schedules: tuple[dict[str, int | float], ...] = (
-        {"epochs": 3.0, "learning_rate": 0.00007, "lora_rank": 32, "lora_alpha": 64},
-        {"epochs": 2.0, "learning_rate": 0.00007, "lora_rank": 64, "lora_alpha": 128},
-        {"epochs": 3.0, "learning_rate": 0.00005, "lora_rank": 64, "lora_alpha": 128},
-        {"epochs": 2.0, "learning_rate": 0.00005, "lora_rank": 96, "lora_alpha": 192},
-        {"epochs": 3.0, "learning_rate": 0.00003, "lora_rank": 96, "lora_alpha": 192},
-    )
-    selected = dict(schedules[(index - 2) % len(schedules)]) if index >= 2 else {}
-    if selected:
-        selected["seed"] = 20260901 + index - 1
-    return selected
-
-
 def _metrics(scope: Mapping[str, Any], label: str) -> dict[str, float]:
     raw = scope.get("metrics")
     if not isinstance(raw, Mapping) or set(raw) != set(_METRICS):
@@ -82,7 +65,7 @@ def decide_quality(report: Mapping[str, Any], version: str) -> QualityDecision:
 
     version_index(version)
     if report.get("passed") is not True or report.get("failures") not in ([], ()):
-        raise IterationPolicyError("integrity-failed evaluation cannot drive retraining")
+        raise IterationPolicyError("integrity-failed evaluation cannot drive release reporting")
     overall_scope = report.get("overall")
     task_scopes = report.get("tasks")
     if not isinstance(overall_scope, Mapping) or not isinstance(task_scopes, Mapping):
@@ -127,7 +110,6 @@ __all__ = [
     "QUALITY_TARGET",
     "QualityDecision",
     "decide_quality",
-    "training_overrides",
     "version_for",
     "version_index",
 ]

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Train if needed, evaluate, and stage one immutable ShadowCrafter-9B version."""
+"""Evaluate and stage the one immutable ShadowCrafter-9B v1.0 candidate."""
 
 from __future__ import annotations
 
@@ -10,8 +10,7 @@ import os
 import shutil
 import subprocess
 import sys
-from collections.abc import Iterator, Mapping
-from contextlib import contextmanager
+from collections.abc import Mapping
 from datetime import UTC, datetime
 from pathlib import Path, PurePosixPath
 from typing import Any
@@ -21,7 +20,6 @@ import yaml
 from shadowcrafter.automation.iterations import (
     QUALITY_TARGET,
     decide_quality,
-    training_overrides,
     version_index,
 )
 from shadowcrafter.automation.promotion import (
@@ -32,7 +30,6 @@ from shadowcrafter.automation.promotion import (
 from shadowcrafter.data.manifest import write_json_exclusive
 from shadowcrafter.evaluation.gate import load_and_evaluate, write_gate_report
 from shadowcrafter.evaluation.inference import observe_runtime_environment
-from shadowcrafter.training.sft import TrainingPins, train_sft
 
 _ROOT = Path("/root/ShadowCrafter")
 _SOURCE_ROOT = Path("/root/ShadowCrafter-source")
@@ -40,7 +37,6 @@ _BASE_MODEL = _ROOT / "artifacts/base_models/Ornith-1.5-9B"
 _BASE_MANIFEST_RELATIVE = Path("artifacts/manifests/ornith-1.5-9b.json")
 _MODEL_CONFIG_RELATIVE = Path("configs/models/shadowcrafter-9b.yaml")
 _GATE_CONFIG_RELATIVE = Path("configs/eval/release-gates.yaml")
-_REGISTRY_RELATIVE = Path("configs/data/sources.yaml")
 _TRAIN = _ROOT / "data/processed/security-expanded-20260901-v8-blackbox-train-only/train.jsonl"
 _TRAIN_MANIFEST = (
     _ROOT / "data/processed/security-expanded-20260901-v8-blackbox-train-only/manifest.json"
@@ -54,7 +50,6 @@ _CTI_SNAPSHOT_MANIFEST = (
     / "ctibench-9237e1636ee3e168fbe5ebdcc1c571de0525e568/manifest.json"
 )
 _ITERATION_ROOT = _ROOT / "artifacts/iterations/shadowcrafter-9b"
-_CHECKPOINT_ROOT = _ROOT / "artifacts/checkpoints/shadowcrafter-9b"
 _RELEASE_ROOT = _ROOT / "artifacts/releases/shadowcrafter-9b"
 _PYTHON = _ROOT / ".venv/bin/python"
 
@@ -64,7 +59,6 @@ _BASE_REVISION = "489cb97981b8654bcfcf30ce1f94ed1b62e07b53"
 _TRAIN_SHA256 = "8b0be9434be7452bf8129650eec485a00d2ce3efabeb725dc2f81908e18b7c7f"
 _TRAIN_MANIFEST_SHA256 = "c40f7d9d24566b5e059d4f8450e9d6b07255ce79de86a6513fce1cb4db020c16"
 _DATASET_SHA256 = "5a8cfe0004244e75d39c680dbbba715290d12743d07e1d482b03250fe3783cb9"
-_REGISTRY_SHA256 = "bdc69660611ee64db3aa5d3279e9859c81a64c08ba55bd46d0c51fe25fd09405"
 _BASE_MANIFEST_SHA256 = "9a8c8c0c909311654a8ced2181b838cfc6d1db08d82f81b841cefa9030178f94"
 _MODEL_CONFIG_SHA256 = "cbcdb0b8bede24f53bb0b366c0db4fc3400087fab793e9b11138e534d3d35610"
 _CASES_SHA256 = "2455b46b4851ed998ce3094ba7d9f796365bd0d71ce51264ff665f1c5203b423"
@@ -157,16 +151,6 @@ def _copy(source: Path, destination: Path) -> None:
         raise VersionRunError("copied evidence failed checksum verification")
 
 
-@contextmanager
-def _working_directory(path: Path) -> Iterator[None]:
-    previous = Path.cwd()
-    os.chdir(path)
-    try:
-        yield
-    finally:
-        os.chdir(previous)
-
-
 def _verify_static_inputs(loop_source: Path) -> None:
     pins = (
         (_TRAIN, _TRAIN_SHA256, "training records"),
@@ -184,50 +168,7 @@ def _verify_static_inputs(loop_source: Path) -> None:
         raise VersionRunError("remote free space is below the 100 GiB version budget")
 
 
-def _train(version: str, source: Path, version_root: Path) -> Path:
-    index = version_index(version)
-    if index == 1:
-        raise VersionRunError("v1.0 must use the already running expanded checkpoint")
-    checkpoint = _CHECKPOINT_ROOT / f"{version}-{source.name[:7]}"
-    if checkpoint.exists() or checkpoint.is_symlink():
-        raise VersionRunError("refusing to reuse a partial or existing version checkpoint")
-    raw = yaml.safe_load((source / _MODEL_CONFIG_RELATIVE).read_text(encoding="utf-8"))
-    if not isinstance(raw, dict) or not isinstance(raw.get("training"), dict):
-        raise VersionRunError("model configuration lost its training mapping")
-    overrides = training_overrides(index)
-    raw["training"].update(overrides)
-    config = version_root / "training-config.yaml"
-    config.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
-    with config.open("x", encoding="utf-8") as handle:
-        yaml.safe_dump(raw, handle, sort_keys=False)
-    config.chmod(0o600)
-    pins = TrainingPins(
-        config_sha256=_sha256(config),
-        train_sha256=_TRAIN_SHA256,
-        validation_sha256=None,
-        dataset_manifest_sha256=_TRAIN_MANIFEST_SHA256,
-        registry_sha256=_REGISTRY_SHA256,
-        git_revision=source.name,
-    )
-    with _working_directory(source):
-        train_sft(
-            config_path=config,
-            train_path=_TRAIN,
-            validation_path=None,
-            dataset_manifest_path=_TRAIN_MANIFEST,
-            registry_path=source / _REGISTRY_RELATIVE,
-            base_model_path=_BASE_MODEL,
-            base_model_manifest_path=source / _BASE_MANIFEST_RELATIVE,
-            base_model_manifest_sha256=_BASE_MANIFEST_SHA256,
-            output_dir=checkpoint,
-            pins=pins,
-        )
-    return checkpoint
-
-
-def _checkpoint_manifest(
-    checkpoint: Path, output: Path, source_revision: str, version: str
-) -> str:
+def _checkpoint_manifest(checkpoint: Path, output: Path, source_revision: str, version: str) -> str:
     if checkpoint.is_symlink() or not checkpoint.is_dir():
         raise VersionRunError("candidate checkpoint is not a real directory")
     files: list[dict[str, Any]] = []
@@ -602,9 +543,7 @@ def _model_card(version: str, checkpoint_sha: str, report: Mapping[str, Any]) ->
         f"Macro-F1: `{metrics['macro_f1']:.6f}`  \n"
         f"95% target met: `{target}`\n"
     )
-    return (
-        "---\n" + yaml.safe_dump(metadata, sort_keys=False) + "---\n" + body
-    ).encode("utf-8")
+    return ("---\n" + yaml.safe_dump(metadata, sort_keys=False) + "---\n" + body).encode("utf-8")
 
 
 def _inventory_sha(remote_root: str, files: list[dict[str, Any]], total: int) -> str:
@@ -759,6 +698,8 @@ def main() -> int:
     args = _arguments()
     try:
         index = version_index(args.version)
+        if index != 1:
+            raise VersionRunError("automatic retraining is disabled; only v1.0 is allowed")
         source = _source(args.source_revision)
         protocol_source = _source(args.protocol_revision)
         _verify_static_inputs(protocol_source)
@@ -777,14 +718,9 @@ def main() -> int:
             raise VersionRunError("version workspace already exists")
         version_root.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
         version_root.mkdir(mode=0o700)
-        if index == 1:
-            if args.checkpoint is None:
-                raise VersionRunError("v1.0 requires the completed expanded checkpoint")
-            checkpoint = args.checkpoint.resolve(strict=True)
-        else:
-            if args.checkpoint is not None:
-                raise VersionRunError("later versions must train a fresh registered candidate")
-            checkpoint = _train(args.version, source, version_root)
+        if args.checkpoint is None:
+            raise VersionRunError("v1.0 requires the completed expanded checkpoint")
+        checkpoint = args.checkpoint.resolve(strict=True)
         checkpoint_manifest = version_root / "checkpoint-manifest.json"
         checkpoint_sha = _checkpoint_manifest(
             checkpoint, checkpoint_manifest, source.name, args.version

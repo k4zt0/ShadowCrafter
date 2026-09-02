@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Publish each completed private 9B version and enqueue the next one until 95%."""
+"""Evaluate and publish the completed private ShadowCrafter-9B candidate once."""
 
 from __future__ import annotations
 
@@ -20,7 +20,7 @@ from typing import Any
 
 from huggingface_hub import HfApi, get_token
 
-from shadowcrafter.automation.iterations import decide_quality, version_for
+from shadowcrafter.automation.iterations import decide_quality
 from shadowcrafter.automation.models import (
     CommandSpec,
     EnvironmentVariable,
@@ -56,7 +56,7 @@ def _arguments() -> argparse.Namespace:
     parser.add_argument("--first-dependency-job", required=True)
     parser.add_argument("--first-checkpoint", required=True)
     parser.add_argument("--start-version", type=int, default=1)
-    parser.add_argument("--max-version", type=int, default=32)
+    parser.add_argument("--max-version", type=int, default=1)
     parser.add_argument("--poll-seconds", type=int, default=60)
     parser.add_argument(
         "--local-root",
@@ -257,9 +257,7 @@ def _job(
             ),
             RemoteEvidence(
                 remote_path=str(_JOB_ROOT / job_id / "worker.log"),
-                local_path=(
-                    f"reports/private/version-loop/shadowcrafter-9b/{version}/worker.log"
-                ),
+                local_path=(f"reports/private/version-loop/shadowcrafter-9b/{version}/worker.log"),
                 max_bytes=64 * 1024 * 1024,
             ),
         ),
@@ -443,86 +441,71 @@ def _publish(
 def main() -> int:
     args = _arguments()
     try:
-        if _SHA40.fullmatch(args.revision) is None or _SHA40.fullmatch(
-            args.first_source_revision
-        ) is None:
+        if (
+            _SHA40.fullmatch(args.revision) is None
+            or _SHA40.fullmatch(args.first_source_revision) is None
+        ):
             raise VersionWatcherError("source revisions must be exact Git SHA-1 values")
-        if not 1 <= args.start_version <= args.max_version <= 128:
-            raise VersionWatcherError("version range must be within [1, 128]")
+        if args.start_version != 1 or args.max_version != 1:
+            raise VersionWatcherError(
+                "automatic retraining is disabled; only the v1.0 evaluation release is allowed"
+            )
         key = _key(args.ssh_key)
         root = args.local_root.resolve()
         root.mkdir(parents=True, exist_ok=True, mode=0o700)
         gate_config = Path("configs/eval/release-gates.yaml").resolve(strict=True)
-        for index in range(args.start_version, args.max_version + 1):
-            version = version_for(index)
-            local_version = root / version
-            if local_version.exists() or local_version.is_symlink():
-                raise VersionWatcherError("local version state already exists; use --start-version")
-            source_revision = args.first_source_revision if index == 1 else args.revision
-            document = _job(
-                version=version,
-                revision=args.revision,
-                source_revision=source_revision,
-                dependency=args.first_dependency_job if index == 1 else None,
-                checkpoint=args.first_checkpoint if index == 1 else None,
-            )
-            _launch(key, document)
-            status = _wait(key, document, args.poll_seconds)
-            local_version.mkdir(mode=0o700)
-            _fetch_control(key, document, status, local_version)
-            _scp_directory(key, _ITERATION_ROOT / version / "evidence", local_version / "evidence")
-            # The evidence manifest fetched through the worker must equal the directory copy.
-            if status.evidence[2].sha256 != _sha256(
-                local_version / "evidence/release-evidence.json"
-            ) or status.evidence[2].sha256 != _sha256(
-                local_version / "control/release-evidence.json"
-            ):
-                raise VersionWatcherError("evidence directory copy changed after job completion")
-            _scp_directory(
-                key,
-                _ITERATION_ROOT / version / "publication",
-                local_version / "publication",
-            )
-            if status.evidence[1].sha256 != _sha256(
-                local_version / "control/gate-report.json"
-            ):
-                raise VersionWatcherError("gate report changed after job completion")
-            report = json.loads(
-                (local_version / "control/gate-report.json").read_text(encoding="utf-8")
-            )
-            decision = decide_quality(report, version)
-            receipt = _publish(
-                key=key,
-                version=version,
-                local_version=local_version,
-                gate_config=gate_config,
-            )
-            _sync_remote_project(key)
-            print(
-                json.dumps(
-                    {
-                        "version": version,
-                        "accuracy": decision.overall["accuracy"],
-                        "target_met": decision.target_met,
-                        "huggingface_commit": receipt["commit_sha"],
-                    },
-                    sort_keys=True,
-                ),
-                flush=True,
-            )
-            if decision.target_met:
-                _write_json_exclusive(
-                    root / "completed.json",
-                    {
-                        "schema_version": 1,
-                        "version": version,
-                        "target": decision.target,
-                        "overall": decision.overall,
-                        "huggingface_commit": receipt["commit_sha"],
-                    },
-                )
-                return 0
-        raise VersionWatcherError("configured version ceiling reached before the 95% target")
+        version = "v1.0"
+        local_version = root / version
+        if local_version.exists() or local_version.is_symlink():
+            raise VersionWatcherError("local v1.0 release state already exists")
+        document = _job(
+            version=version,
+            revision=args.revision,
+            source_revision=args.first_source_revision,
+            dependency=args.first_dependency_job,
+            checkpoint=args.first_checkpoint,
+        )
+        _launch(key, document)
+        status = _wait(key, document, args.poll_seconds)
+        local_version.mkdir(mode=0o700)
+        _fetch_control(key, document, status, local_version)
+        _scp_directory(key, _ITERATION_ROOT / version / "evidence", local_version / "evidence")
+        # The evidence manifest fetched through the worker must equal the directory copy.
+        if status.evidence[2].sha256 != _sha256(
+            local_version / "evidence/release-evidence.json"
+        ) or status.evidence[2].sha256 != _sha256(local_version / "control/release-evidence.json"):
+            raise VersionWatcherError("evidence directory copy changed after job completion")
+        _scp_directory(
+            key,
+            _ITERATION_ROOT / version / "publication",
+            local_version / "publication",
+        )
+        if status.evidence[1].sha256 != _sha256(local_version / "control/gate-report.json"):
+            raise VersionWatcherError("gate report changed after job completion")
+        report = json.loads(
+            (local_version / "control/gate-report.json").read_text(encoding="utf-8")
+        )
+        decision = decide_quality(report, version)
+        receipt = _publish(
+            key=key,
+            version=version,
+            local_version=local_version,
+            gate_config=gate_config,
+        )
+        _sync_remote_project(key)
+        result = {
+            "schema_version": 1,
+            "version": version,
+            "target": decision.target,
+            "target_met": decision.target_met,
+            "overall": decision.overall,
+            "tasks": decision.task_metrics,
+            "quality_shortfalls": list(decision.shortfalls),
+            "huggingface_commit": receipt["commit_sha"],
+        }
+        _write_json_exclusive(root / "completed.json", result)
+        print(json.dumps(result, sort_keys=True), flush=True)
+        return 0
     except Exception as error:
         print(f"version watcher stopped: {type(error).__name__}: {error}", file=sys.stderr)
         return 2

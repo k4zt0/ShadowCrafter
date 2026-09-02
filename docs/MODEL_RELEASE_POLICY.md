@@ -44,9 +44,11 @@ balanced accuracy, recall, precision과 confusion matrix를 함께 공개합니�
 
 보고서 생성, 완화책 품질, 인용 근거성, 캘리브레이션과 안전성에는 accuracy를 억지로 적용하지 않습니다. 이들은 블라인드 전문가 루브릭, 사실 일치율, unsupported-claim rate, calibration error, 위험 요청 거부율과 정상 방어 요청 성공률 등 사전 정의한 별도 게이트를 통과해야 합니다.
 
-## 4. 재학습 규칙
+## 4. 후속 학습 정책
 
-목표 미달 시 데이터 정제, 레이블 수정, 학습 방법 또는 hyperparameter를 바꿔 새 candidate를 만들 수 있습니다. 단, 다음 규칙을 지킵니다.
+현재 ShadowCrafter-9B 자동화는 목표 미달 시 새 candidate를 만들지 않으며 `v1.0`
+평가·게시 후 종료합니다. 실제 점수는 낮더라도 그대로 보고합니다. 향후 사용자가
+별도의 새 학습을 명시적으로 승인하는 경우에만 다음 규칙을 지킵니다.
 
 - blind test의 예제나 세부 실패를 학습·prompt 선택·hyperparameter 최적화에 사용하지 않습니다.
 - test 결과를 개발에 사용한 순간 해당 세트는 validation이 되며 새로운 독립 blind test를 확보합니다.
@@ -54,10 +56,9 @@ balanced accuracy, recall, precision과 confusion matrix를 함께 공개합니�
 - 각 run의 실패도 보존해 선택 편향과 반복 횟수를 기록합니다.
 - compute budget, 데이터 권리, 안전성 또는 과적합 위험 때문에 유효한 개선이 없으면 “미달”로 종료합니다.
 
-따라서 후속 재학습은 테스트 세트 암기나 무기한 성능 약속이 아닙니다. 독립 평가의
-무결성을 지키면서 모델을 개선하되, 목표 미달 모델도 사용자의 지시에 따라
-private Official Release로 게시할 수 있습니다. `Qualified` 또는 `95% 달성`
-표기는 실제 통과 증거가 있을 때만 허용합니다.
+자동 재학습, benchmark 점수 기반 후보 선택과 임계값 도달 때까지의 반복 실행은
+금지합니다. 목표 미달 모델도 private Official Release로 게시할 수 있지만,
+`Qualified` 또는 `95% 달성` 표기는 실제 통과 증거가 있을 때만 허용합니다.
 
 ## 5. 필수 릴리스 게이트
 

@@ -52,7 +52,7 @@ private official release 업로드를 막지 않습니다. 생성형 보고서, 
 `Official Release`, 실제 점수, 평가 범위와 `95% target met: no`를 명시합니다. 정확도와
 별개로 무결성·라이선스·개인정보·안전성에 실패한 artifact는 업로드하지 않습니다.
 자세한 기준은 [docs/MODEL_RELEASE_POLICY.md](docs/MODEL_RELEASE_POLICY.md)에 있습니다.
-학습 완료 후 `v1.0`, `v2.0` 순으로 평가·비공개 업로드·재학습을 잇는 자동화는
+학습 완료 후 `v1.0`을 한 번 평가·비공개 업로드하고 실제 점수를 보고하는 자동화는
 [docs/VERSION_LOOP.md](docs/VERSION_LOOP.md)에 설명합니다.
 
 ## 로컬·원격 자산 보관

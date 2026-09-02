@@ -5,7 +5,6 @@ import pytest
 from shadowcrafter.automation.iterations import (
     IterationPolicyError,
     decide_quality,
-    training_overrides,
     version_for,
     version_index,
 )
@@ -44,24 +43,10 @@ def test_quality_rejects_caller_decision_drift() -> None:
         decide_quality(_report(0.95, decision=False), "v1.0")
 
 
-def test_training_search_is_bounded_and_does_not_accept_benchmark_feedback() -> None:
-    assert training_overrides(1) == {}
-    second = training_overrides(2)
-    assert second == {
-        "epochs": 3.0,
-        "learning_rate": 0.00007,
-        "lora_rank": 32,
-        "lora_alpha": 64,
-        "seed": 20260902,
-    }
-    assert set(second) == {"epochs", "learning_rate", "lora_rank", "lora_alpha", "seed"}
-
-
 def test_version_control_evidence_may_use_the_dedicated_remote_namespace() -> None:
     evidence = RemoteEvidence(
         remote_path=(
-            "/root/ShadowCrafter/artifacts/iterations/"
-            "shadowcrafter-9b/v1.0/publication/ready.json"
+            "/root/ShadowCrafter/artifacts/iterations/shadowcrafter-9b/v1.0/publication/ready.json"
         ),
         local_path="reports/private/version-loop/shadowcrafter-9b/v1.0/ready.json",
     )
