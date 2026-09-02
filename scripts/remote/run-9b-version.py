@@ -13,7 +13,7 @@ import sys
 from collections.abc import Mapping
 from datetime import UTC, datetime
 from pathlib import Path, PurePosixPath
-from typing import Any
+from typing import Any, Literal
 
 import yaml
 
@@ -50,10 +50,13 @@ _CTI_SNAPSHOT_MANIFEST = (
     / "ctibench-9237e1636ee3e168fbe5ebdcc1c571de0525e568/manifest.json"
 )
 _ITERATION_ROOT = _ROOT / "artifacts/iterations/shadowcrafter-9b"
+_RELEASE_CANDIDATE_ROOT = (
+    _ROOT / "artifacts/checkpoints/shadowcrafter-9b/release-candidates"
+)
 _RELEASE_ROOT = _ROOT / "artifacts/releases/shadowcrafter-9b"
 _PYTHON = _ROOT / ".venv/bin/python"
 
-_MODEL_ID = "KaztoRay/ShadowCrafter-9B"
+_MODEL_ID: Literal["KaztoRay/ShadowCrafter-9B"] = "KaztoRay/ShadowCrafter-9B"
 _BASE_MODEL_ID = "ornith-ai/Ornith-1.5-9B"
 _BASE_REVISION = "489cb97981b8654bcfcf30ce1f94ed1b62e07b53"
 _TRAIN_SHA256 = "8b0be9434be7452bf8129650eec485a00d2ce3efabeb725dc2f81908e18b7c7f"
@@ -626,10 +629,16 @@ def _stage_release(
     reason: str | None,
     version_root: Path,
 ) -> Path:
-    candidate = version_root / "release-candidate"
+    candidate = _RELEASE_CANDIDATE_ROOT / version
     publication = version_root / "publication"
-    if candidate.exists() or publication.exists():
+    if (
+        candidate.exists()
+        or candidate.is_symlink()
+        or publication.exists()
+        or publication.is_symlink()
+    ):
         raise VersionRunError("refusing to overwrite release staging")
+    candidate.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
     candidate.mkdir(mode=0o700)
     card = candidate / "README.md"
     flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0)
@@ -642,24 +651,26 @@ def _stage_release(
         if source.is_symlink():
             raise VersionRunError("adapter release surface contains a symbolic link")
         if source.is_file():
-            relative = source.relative_to(checkpoint / "adapter")
+            relative_path = source.relative_to(checkpoint / "adapter")
             if source.suffix.lower() not in _SAFE_RELEASE_SUFFIXES:
-                raise VersionRunError(f"adapter release suffix is not allowlisted: {relative}")
-            _copy(source, candidate / "adapter" / relative)
+                raise VersionRunError(
+                    f"adapter release suffix is not allowlisted: {relative_path}"
+                )
+            _copy(source, candidate / "adapter" / relative_path)
 
     promotion_files: list[PromotionFile] = []
     for source in sorted(candidate.rglob("*")):
         if not source.is_file():
             continue
-        relative = source.relative_to(candidate).as_posix()
+        relative_name = source.relative_to(candidate).as_posix()
         destination = (
             "README.md"
-            if relative == "README.md"
-            else f"releases/{version}/{relative.removeprefix('adapter/')}"
+            if relative_name == "README.md"
+            else f"releases/{version}/{relative_name.removeprefix('adapter/')}"
         )
         promotion_files.append(
             PromotionFile(
-                source_path=relative,
+                source_path=relative_name,
                 destination_path=destination,
                 size=source.stat().st_size,
                 sha256=_sha256(source),
