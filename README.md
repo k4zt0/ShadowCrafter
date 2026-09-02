@@ -92,9 +92,11 @@ SSH 키, Hugging Face 토큰, GitHub 토큰은 저장소나 학습 이미지에 
 
 V2는 공식 Google Colab VS Code 확장(`google.colab`)에서 실행 가능한
 [`ShadowCrafter_V2_Colab.ipynb`](notebooks/ShadowCrafter_V2_Colab.ipynb)도 제공합니다.
-Colab 런타임 제한에 대응해 private Drive에 hash-검증 checkpoint를 저장하고 재개하며,
-불완전 checkpoint는 보존형 검역 후 마지막 완전본부터 이어갑니다. 연결·입력 업로드와
-비밀 관리 절차는 [docs/COLAB_TRAINING.md](docs/COLAB_TRAINING.md)를 따릅니다.
+노트북 안에 검증된 최소 Git bundle과 입력 자료를 압축해 포함하므로 Google Drive,
+private GitHub, Hugging Face 계정·토큰 연결 없이 실행합니다. 공개 기반 모델만 익명
+다운로드하고 checkpoint/candidate는 Colab 임시 저장소에서 로컬 다운로드 링크로
+내보냅니다. 세션 보존 제한과 절차는 [docs/COLAB_TRAINING.md](docs/COLAB_TRAINING.md)를
+따릅니다.
 
 ## 저장소와 릴리스 흐름
 

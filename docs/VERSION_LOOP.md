@@ -27,7 +27,7 @@ manifest-검증 adapter를 메모리로 스트리밍해 public 저장소에 올�
 
 V2 학습은 원격 detached worker의 `run-v2-training.py` 또는 공식 Google Colab
 VS Code 확장에서 여는 `notebooks/ShadowCrafter_V2_Colab.ipynb`를 사용한다. Colab
-경로는 동일 source/data/config hash에 묶인 Drive checkpoint만 재개하며, optimizer
-state를 포함하므로 본인만 접근 가능한 private Drive를 신뢰 경계로 요구한다. 어느
-경로에서도 Hugging Face 공개 게시 자격 증명은 학습 런타임에 전달하지 않고 로컬 게시
-단계에만 유지한다.
+경로는 계정 연결 없이 내장 source/data hash를 검증하고 살아 있는 runtime의 임시
+checkpoint만 재개한다. 세션 종료 전 checkpoint/candidate를 로컬로 내려받아야 한다.
+어느 경로에서도 Hugging Face 공개 게시 자격 증명은 학습 런타임에 전달하지 않고 로컬
+게시 단계에만 유지한다.

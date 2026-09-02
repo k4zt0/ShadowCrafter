@@ -29,7 +29,8 @@
 - public Hugging Face `KaztoRay/ShadowCrafter-9B`의 `v1.0` 게시 및 익명
   다운로드/SHA-256 검증 완료
 - V2는 NIST Juliet 64,099건을 추가한 총 92,239건 corpus로 새 adapter를 학습한다.
-- 공식 VS Code Colab 확장용 재개형 notebook과 Drive checkpoint 완전성 검증 구현 완료
+- 공식 VS Code Colab 확장용 accountless notebook, 내장 source/data 검증,
+  임시 checkpoint 완전성 및 로컬 export 구현 완료
 
 ## 데이터와 평가
 
